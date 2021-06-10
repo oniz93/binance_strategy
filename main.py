@@ -57,8 +57,7 @@ configfile.close()
 api_key = config['binance_key']
 api_secret = config['binance_secret']
 client = Client(api_key, api_secret)
-timeframe = config['timeframe']
-secondsTf = timeframeToSeconds(timeframe)
+timeframes = config['timeframes']
 
 def signToTick():
     try:
@@ -79,11 +78,12 @@ def signToTick():
         print("control-c")
         twm.stop()
 
-def check_coin(symbol):
-    print("Start %s" % (symbol,))
+def check_coin(args):
+    symbol = args['symbol']
+    timeframe = args['timeframe']
+    secondsTf = timeframeToSeconds(timeframe)
+    print("Start %s %s" % (symbol,timeframe,))
     while True:
-        timestamp = client._get_earliest_valid_timestamp(symbol, timeframe)
-        wait_next = timestamp + secondsTf
         #bars = client.get_historical_klines('BTCUSDT', '4h', timestamp, limit=50)
         response = requests.get(
             url="https://api.binance.com/api/v3/klines",
@@ -108,6 +108,13 @@ def check_coin(symbol):
         df.ta.ema(close='high', length=40, append=True, suffix='high')
 
         check_ticks = df[-2:-1]
+
+        last_ticks = df[-1:-1]
+        wait_next = time.time()+secondsTf
+        for tick in last_ticks.iterrows():
+            timestamp = float(tick['date'])/1000
+            wait_next = timestamp + secondsTf
+
         c_t = 0
         c_l = 0
         c_ct = 0
@@ -121,25 +128,40 @@ def check_coin(symbol):
                 c_ct = c_ct +1
 
         for index, check_tick in check_ticks.iterrows():
-            if check_tick['low'] < check_tick['EMA_4'] and check_tick['low'] < check_tick['EMA_9'] and check_tick['low'] < check_tick['EMA_40'] and c_t >= 8 and c_l < 10:
+            if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4'] and check_tick['low'] > check_tick['EMA_9'] and check_tick['low'] > check_tick['EMA_40'] and c_t > 5:
                 take_profit = check_tick['close']-check_tick['open']+check_tick['close']
                 stop_loss = check_tick['low'] - (check_tick['high']-check_tick['low'])
                 response = requests.get(
-                    url="https://api.binance.com/api/v3/avgPrice",
+                    url="https://api.binance.com/api/v3/depth",
                     params={
                         "symbol": symbol,
+                        "limit": 5
                     },
                     headers={
                         "Content-Type": "application/json",
                     },
                 )
-                price = json.loads(response.content)
-                price = float(price['price'])
+                price_ask_bid = json.loads(response.content)
+                if len(price_ask_bid['bids']) == 0:
+                    print(symbol + " break")
+                    break
+                price_bid = float(price_ask_bid['bids'][0][0])
+                price_ask = float(price_ask_bid['asks'][0][0])
+                price_avg = (price_bid+price_ask)/2
+                price = float(price_avg)
                 price = price + price*0.0001
+
+                current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                file_currency = open(cwd + "/" + symbol + "_" + timeframe + ".log", 'a')
+                file_currency.write(
+                    "Date %s - Price ask: %f - Price bid: %f - Diff: %f\n" % (
+                    str(current_time), price_ask, price_bid, (price_ask-price_bid),))
+                file_currency.close()
+
                 if price < take_profit:
                     est_perc = take_profit/price
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                    file_currency = open(cwd + "/" + symbol + ".log", 'a')
+                    file_currency = open(cwd + "/" + symbol + "_" + timeframe + ".log", 'a')
                     file_currency.write("Date %s - Price: %f - Take profit: %f - Stop loss: %f - Gain: %f - T = %d - L = %d - CT = %d\n" % (str(current_time), price, take_profit, stop_loss, est_perc,c_t,c_l, c_ct,))
                     file_currency.close()
 
@@ -160,10 +182,13 @@ def main():
         coins = json.loads(response.content)
         for symbol in coins['symbols']:
             if symbol['quoteAsset'] == 'USDT':
-                p = Process(target=check_coin, args=(symbol['symbol'],))
-                p.start()
-                workers.append(p)
-                time.sleep(0.01)
+                for timeframe in timeframes:
+                    arg = {"symbol": symbol['symbol'], "timeframe": timeframe}
+                    p = Process(target=check_coin, args=(arg,))
+                    p.start()
+                    workers.append(p)
+                    time.sleep(0.001)
+                time.sleep(0.1)
 
     except KeyboardInterrupt:
         print("control-c")
