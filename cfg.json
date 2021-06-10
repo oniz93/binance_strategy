@@ -3,5 +3,6 @@
   "binance_key": "mP09Jd1dpY2B3rP8mwWYOeR2odl4kuVw3Hut5z7qaA67PPlFNg4y3qu4vvsi4ijV",
   "binance_secret": "mnp3ys2UikzcXSUDixUTMaKbVMloYbRR8RQE8Z37NLhUdSdYZPURM2z8p6mQkrhn",
   "twillo_key": "AC67c5c65a9355709c6b9c01b1a0f409e8",
-  "twillo_secret": "de4105eec7e2fa5486ed915b3c1096a0"
+  "twillo_secret": "de4105eec7e2fa5486ed915b3c1096a0",
+  "timeframe": "5m"
 }
