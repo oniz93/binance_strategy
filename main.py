@@ -84,6 +84,8 @@ def check_coin(args):
     secondsTf = timeframeToSeconds(timeframe)
     print("Start %s %s" % (symbol,timeframe,))
     while True:
+        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+        print("%s - Get tick %s timeframe %s" % (str(current_time), symbol, timeframe))
         #bars = client.get_historical_klines('BTCUSDT', '4h', timestamp, limit=50)
         response = requests.get(
             url="https://api.binance.com/api/v3/klines",
@@ -181,14 +183,14 @@ def main():
         )
         coins = json.loads(response.content)
         for symbol in coins['symbols']:
-            if symbol['quoteAsset'] == 'USDT':
-                for timeframe in timeframes:
-                    arg = {"symbol": symbol['symbol'], "timeframe": timeframe}
-                    p = Process(target=check_coin, args=(arg,))
-                    p.start()
-                    workers.append(p)
-                    time.sleep(0.001)
-                time.sleep(0.1)
+            for timeframe in timeframes:
+                print("Starting %s %s" % (symbol['symbol'], timeframe))
+                arg = {"symbol": symbol['symbol'], "timeframe": timeframe}
+                p = Process(target=check_coin, args=(arg,))
+                p.start()
+                workers.append(p)
+                time.sleep(0.2)
+            time.sleep(0.2)
 
     except KeyboardInterrupt:
         print("control-c")
