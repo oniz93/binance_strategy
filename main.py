@@ -56,12 +56,42 @@ configfile = open(cwd + "/cfg.json", 'r')
 config = json.loads(configfile.read())
 configfile.close()
 timeframes = config['timeframes']
+workers = list()
 
 def orderbook(args):
+    start_datetime = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
     api_key = config['binance_key']
     api_secret = config['binance_secret']
-    client = Client(api_key, api_secret)
+    twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
+    twm.start()
+    symbol = args['symbol']
+    c_t = args['c_t']
+    c_l = args['c_l']
+    c_ct = args['c_ct']
+    price = args['price']
+    take_profit = args['take_profit']
+    stop_loss = args['stop_loss']
+    timeframe = args['timeframe']
+    def check_price(trade):
+        act_price = float(trade['data']['p'])
+        out = False
+        if act_price >= take_profit:
+            out = 'tp'
+        elif act_price <= stop_loss:
+            out = 'sl'
 
+        if out:
+            twm.stop()
+            current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+            file_currency = open(cwd + "/csv/logs.csv", 'a')
+            file_currency.write(
+                "{0},{1},{2},{3},{4:.8f},{5},{6},{7},{8:.8f},{9:.8f},{10}\n".format(
+                str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out,))
+            file_currency.close()
+    streams = [str(symbol).lower()+'@trade']
+    asd = twm.start_multiplex_socket(callback=check_price, streams=streams)
+
+    twm.join()
 
 def check_coin(args):
     symbol = args['symbol']
@@ -146,13 +176,26 @@ def check_coin(args):
 
             if price < take_profit:
                 est_perc = take_profit/price
+                args = {
+                    "symbol": symbol,
+                    "c_t": c_t,
+                    "c_l": c_l,
+                    "c_ct": c_ct,
+                    "price": price,
+                    "stop_loss": stop_loss,
+                    "take_profit": take_profit,
+                    "timeframe": timeframe
+                }
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                 file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
                 file_currency.write("Date %s - Price: %f - Take profit: %f - Stop loss: %f - Gain: %f - T = %d - L = %d - CT = %d\n" % (str(current_time), price, take_profit, stop_loss, est_perc,c_t,c_l, c_ct,))
                 file_currency.close()
+                p = Process(target=orderbook, args=(args,))
+                p.start()
+                workers.append(p)
+
 
 def main():
-    workers = list()
     try:
         response = requests.get(
             url="https://api.binance.com/api/v3/exchangeInfo",
@@ -170,7 +213,9 @@ def main():
             for timeframe in timeframes:
                 if curr_time%timeframeToSeconds(timeframe) == 0 or first_start:
                     for symbol in coins['symbols']:
-                        if symbol['quoteAsset'] in ('ETH', 'BUSD', 'USDT'):
+                        assets = ('ETH', 'BUSD', 'USDT')
+                        assets = ('USDT')
+                        if symbol['quoteAsset'] in assets:
                             print("Starting %s %s" % (symbol['symbol'], timeframe))
                             arg = {"symbol": symbol['symbol'], "timeframe": timeframe}
                             p = Process(target=check_coin, args=(arg,))
