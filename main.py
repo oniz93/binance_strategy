@@ -214,7 +214,7 @@ def main():
                 if curr_time%timeframeToSeconds(timeframe) == 0 or first_start:
                     for symbol in coins['symbols']:
                         assets = ('ETH', 'BUSD', 'USDT')
-                        assets = ('USDT')
+                        #assets = ('USDT')
                         if symbol['quoteAsset'] in assets:
                             print("Starting %s %s" % (symbol['symbol'], timeframe))
                             arg = {"symbol": symbol['symbol'], "timeframe": timeframe}
