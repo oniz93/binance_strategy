@@ -173,8 +173,8 @@ def check_coin(args):
                 "Date %s - Price ask: %f - Price bid: %f - Diff: %f\n" % (
                 str(current_time), price_ask, price_bid, (price_ask-price_bid),))
             file_currency.close()
-
-            if price < take_profit:
+            current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
+            if price < take_profit and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 6 and c_l == 4 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
                 est_perc = take_profit/price
                 args = {
                     "symbol": symbol,
@@ -213,7 +213,7 @@ def main():
             for timeframe in timeframes:
                 if curr_time%timeframeToSeconds(timeframe) == 0 or first_start:
                     for symbol in coins['symbols']:
-                        assets = ('ETH', 'BUSD', 'USDT')
+                        assets = ('ETH', 'USDT')
                         #assets = ('USDT')
                         if symbol['quoteAsset'] in assets:
                             print("Starting %s %s" % (symbol['symbol'], timeframe))
