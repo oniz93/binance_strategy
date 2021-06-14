@@ -224,6 +224,7 @@ def main():
                             c = c + 2
                             if c%1100 == 0:
                                 time.sleep(60)
+            first_start = False
             time.sleep(1)
 
 
