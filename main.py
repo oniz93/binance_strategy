@@ -155,8 +155,8 @@ def check_coin(args):
     for index, check_tick in check_ticks.iterrows():
         if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4'] and check_tick['low'] > \
                 check_tick['EMA_9'] and check_tick['low'] > check_tick['EMA_40']:
-            take_profit = check_tick['close'] - check_tick['open'] + check_tick['close']
-            stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low'])
+            take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])*1.3
+            stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low'])*1.2
             response = requests.get(
                 url="https://api.binance.com/api/v3/depth",
                 params={
@@ -229,6 +229,7 @@ def main():
             curr_time = int(time.time())
             for timeframe in timeframes:
                 if curr_time % timeframeToSeconds(timeframe) == 0 or first_start:
+                    time.sleep(10)
                     for symbol in coins['symbols']:
                         assets = ('ETH', 'USDT')
                         # assets = ('USDT')
