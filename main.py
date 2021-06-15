@@ -185,7 +185,7 @@ def check_coin(args):
             file_currency.close()
             current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
             if price < take_profit and (
-                    (c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 6 and c_l == 4 and c_ct == 0) or (
+                    (c_t == 8 and c_l == 2 and c_ct == 0) or (
                     c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (
                             c_t == 3 and c_l == 7 and c_ct == 0) or (
                             c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
