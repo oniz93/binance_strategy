@@ -128,8 +128,12 @@ def orderbook(args):
         assetPrice = getCurrentCoinPrice(quoteAsset+'USDT')
     else:
         assetPrice = 1
-    qty_buy = (12+(assetPrice*(high_price-low_price)))/assetPrice
-    qty_min = (12+assetPrice)/assetPrice
+    if quoteAsset != 'BNB':
+        qty_buy = (12+(assetPrice*(high_price-low_price)))/assetPrice
+        qty_min = (12+assetPrice)/assetPrice
+    else:
+        qty_buy = (2 + (assetPrice * (high_price - low_price))) / assetPrice
+        qty_min = (2 + assetPrice) / assetPrice
     if(qty_asset > qty_buy):
         order = client.order_market_buy(
             symbol=symbol,
