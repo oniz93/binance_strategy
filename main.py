@@ -75,10 +75,10 @@ def orderbook(args):
     stop_loss = args['stop_loss']
     timeframe = args['timeframe']
     strategy = args['strategy']
-    open = args['open']
-    close = args['close']
-    high = args['high']
-    low = args['low']
+    open_price = args['open']
+    close_price = args['close']
+    high_price = args['high']
+    low_price = args['low']
     print(str(start_datetime) + " - Start check price "+symbol+" tf "+timeframe)
 
     def check_price(trade):
@@ -93,7 +93,7 @@ def orderbook(args):
                 gain = stop_loss - price
 
             if out:
-                if symbol[-3:] == "ETH":
+                if symbol[-3:] in ("ETH", "eth"):
                     searchPrice = True
                     while searchPrice:
                         try:
@@ -122,7 +122,7 @@ def orderbook(args):
                             logging.critical(symbol)
                             logging.critical(response.content)
                             logging.critical(e, exc_info=True)
-                elif symbol[-3:] == "BNB":
+                elif symbol[-3:] in ("BNB", "bnb"):
                     searchPrice = True
                     while searchPrice:
                         try:
@@ -151,7 +151,7 @@ def orderbook(args):
                             logging.critical(symbol)
                             logging.critical(response.content)
                             logging.critical(e, exc_info=True)
-                elif symbol[-3:] == "BTC":
+                elif symbol[-3:] in ("BTC", "btc"):
                     searchPrice = True
                     while searchPrice:
                         try:
@@ -179,8 +179,6 @@ def orderbook(args):
                             logging.critical(symbol)
                             logging.critical(response.content)
                             logging.critical(e, exc_info=True)
-
-
                 else:
                     base_price = 1
 
@@ -190,7 +188,7 @@ def orderbook(args):
                 file_currency.write(
                     "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f}\n".format(
                         strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct),
-                        stop_loss, take_profit, out, gain, base_price, open, close, high, low))
+                        stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price))
                 file_currency.close()
                 positions.remove(timeframe + "_" + symbol)
                 print(str(start_datetime) + " - End check price "+symbol+" tf "+timeframe)
@@ -415,8 +413,8 @@ def main():
             curr_time = int(time.time())
             for timeframe in timeframes:
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                print(str(current_time) + " - Start TF: " + timeframe)
                 if curr_time % timeframeToSeconds(timeframe) == 0 or first_start:
+                    print(str(current_time) + " - Start TF: " + timeframe)
                     time.sleep(10)
                     for symbol in coins['symbols']:
                         assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
