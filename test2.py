@@ -13,7 +13,13 @@ from multiprocessing import Process
 import random
 import time
 from binance import ThreadedWebsocketManager
-
+cwd = os.getcwd()
+configfile = open(cwd + "/cfg.json", 'r')
+config = json.loads(configfile.read())
+configfile.close()
+timeframes = config['timeframes']
+workers = list()
+positions = []
 
 def timeframeToSeconds(tf):
     if tf == '1m':
@@ -165,4 +171,6 @@ def check_coin(args):
                 workers.append(p)
 
 if __name__ == "__main__":
-   check_coin({"symbol": "ETHUSDT", "timeframe": "15m"})
+   client = Client(api_key = config['binance_key'], api_secret = config['binance_secret'])
+   balance = client.get_asset_balance(asset='USDT')
+   print(balance['free'])
