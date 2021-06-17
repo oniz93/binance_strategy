@@ -18,6 +18,12 @@ import logging
 # create logger with 'spam_application'
 logging.basicConfig(filename='logs/error.log',level=logging.INFO)
 
+def createLogHeaders(path):
+    if not os.path.exists(path):
+        file_currency = open(path, 'a')
+        file_currency.write(
+            '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low"\n')
+        file_currency.close()
 
 def timeframeToSeconds(tf):
     if tf == '1m':
@@ -184,7 +190,9 @@ def orderbook(args):
 
                 twm.stop()
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                file_currency = open(cwd + "/csv/logs.csv", 'a')
+                log_path = cwd + "/csv/"+ strategy +".csv"
+                createLogHeaders(log_path)
+                file_currency = open(log_path, 'a')
                 file_currency.write(
                     "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f}\n".format(
                         strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct),
@@ -263,7 +271,7 @@ def check_coin(args):
         for index, check_tick in check_ticks.iterrows():
             if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4'] and check_tick['low'] > \
                     check_tick['EMA_9'] and check_tick['low'] > check_tick['EMA_40']:
-                take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])*1.5
+                take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low'])*1.2
                 response = requests.get(
                     url="https://api.binance.com/api/v3/depth",
@@ -298,36 +306,38 @@ def check_coin(args):
                                 c_t == 3 and c_l == 7 and c_ct == 0) or (
                                 c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
                     est_perc = take_profit / price
-                    args = {
-                        "symbol": symbol,
-                        "c_t": c_t,
-                        "c_l": c_l,
-                        "c_ct": c_ct,
-                        "price": price,
-                        "stop_loss": stop_loss,
-                        "take_profit": take_profit,
-                        "timeframe": timeframe,
-                        "strategy": "ema4-ema9-ema40",
-                        "open": check_tick['open'],
-                        "close": check_tick["close"],
-                        "low": check_tick["low"],
-                        "high": check_tick["high"]
-                    }
-                    current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                    file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
-                    file_currency.write(
-                        "Date %s - Price: %f - Take profit: %f - Stop loss: %f - Gain: %f - T = %d - L = %d - CT = %d\n" % (
-                        str(current_time), price, take_profit, stop_loss, est_perc, c_t, c_l, c_ct,))
-                    file_currency.close()
-                    positions.append(timeframe + "_" + symbol)
-                    p = Process(target=orderbook, args=(args,))
-                    p.start()
-                    workers.append(p)
+                    for x in range(0, 10):
+                        multiplier = 1+(x*0.1)
+                        args = {
+                            "symbol": symbol,
+                            "c_t": c_t,
+                            "c_l": c_l,
+                            "c_ct": c_ct,
+                            "price": price,
+                            "stop_loss": stop_loss,
+                            "take_profit": take_profit*multiplier,
+                            "timeframe": timeframe,
+                            "strategy": "ema4-ema9-ema40-tp"+str(multiplier),
+                            "open": check_tick['open'],
+                            "close": check_tick["close"],
+                            "low": check_tick["low"],
+                            "high": check_tick["high"]
+                        }
+                        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                        file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
+                        file_currency.write(
+                            "Date %s - Price: %f - Take profit: %f - Stop loss: %f - Gain: %f - T = %d - L = %d - CT = %d\n" % (
+                            str(current_time), price, take_profit, stop_loss, est_perc, c_t, c_l, c_ct,))
+                        file_currency.close()
+                        positions.append(timeframe + "_" + symbol)
+                        p = Process(target=orderbook, args=(args,))
+                        p.start()
+                        workers.append(p)
 
                 if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick[
                     'low'] > \
                         check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']:
-                    take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close']) * 1.3
+                    take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                     stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
                     response = requests.get(
                         url="https://api.binance.com/api/v3/depth",
@@ -362,42 +372,39 @@ def check_coin(args):
                                     c_t == 3 and c_l == 7 and c_ct == 0) or (
                                     c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
                         est_perc = take_profit / price
-                        args = {
-                            "symbol": symbol,
-                            "c_t": c_t,
-                            "c_l": c_l,
-                            "c_ct": c_ct,
-                            "price": price,
-                            "stop_loss": stop_loss,
-                            "take_profit": take_profit,
-                            "timeframe": timeframe,
-                            "strategy": "ema4ohlc4-ema9ohlc4-ema40ohlc4",
-                            "open": check_tick['open'],
-                            "close": check_tick["close"],
-                            "low": check_tick["low"],
-                            "high": check_tick["high"]
-                        }
-                        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                        file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
-                        file_currency.write(
-                            "Date %s - Price: %f - Take profit: %f - Stop loss: %f - Gain: %f - T = %d - L = %d - CT = %d\n" % (
-                                str(current_time), price, take_profit, stop_loss, est_perc, c_t, c_l, c_ct,))
-                        file_currency.close()
-                        positions.append(timeframe + "_" + symbol)
-                        p = Process(target=orderbook, args=(args,))
-                        p.start()
-                        workers.append(p)
+                        for x in range(0, 10):
+                            multiplier = 1 + (x * 0.1)
+                            args = {
+                                "symbol": symbol,
+                                "c_t": c_t,
+                                "c_l": c_l,
+                                "c_ct": c_ct,
+                                "price": price,
+                                "stop_loss": stop_loss,
+                                "take_profit": take_profit * multiplier,
+                                "timeframe": timeframe,
+                                "strategy": "ema4ohlc4-ema9ohlc4-ema40ohlc4-tp" + str(multiplier),
+                                "open": check_tick['open'],
+                                "close": check_tick["close"],
+                                "low": check_tick["low"],
+                                "high": check_tick["high"]
+                            }
+                            current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                            file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
+                            file_currency.write(
+                                "Date %s - Price: %f - Take profit: %f - Stop loss: %f - Gain: %f - T = %d - L = %d - CT = %d\n" % (
+                                    str(current_time), price, take_profit, stop_loss, est_perc, c_t, c_l, c_ct,))
+                            file_currency.close()
+                            positions.append(timeframe + "_" + symbol)
+                            p = Process(target=orderbook, args=(args,))
+                            p.start()
+                            workers.append(p)
 
     except Exception as e:
         logging.critical(e, exc_info=True)
 
 def main():
     try:
-        if not os.path.exists('./csv/logs.csv'):
-            file_currency = open(cwd + "/csv/logs.csv", 'a')
-            file_currency.write(
-                '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low"\n')
-            file_currency.close()
         response = requests.get(
             url="https://api.binance.com/api/v3/exchangeInfo",
             params={
