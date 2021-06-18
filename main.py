@@ -121,11 +121,11 @@ def orderbook(args):
     client = Client(api_key=api_key, api_secret=api_secret)
     balance = client.get_asset_balance(asset=quoteAsset)
 
-    qty_asset = balance['free']
+    qty_asset = float(balance['free'])
     if(qty_asset == 0):
         return
     if quoteAsset != 'USDT' and quoteAsset != 'BUSDT':
-        assetPrice = getCurrentCoinPrice(quoteAsset+'USDT')
+        assetPrice = float(getCurrentCoinPrice(quoteAsset+'USDT'))
     else:
         assetPrice = 1
     if quoteAsset != 'BNB':
@@ -138,13 +138,13 @@ def orderbook(args):
         order = client.order_market_buy(
             symbol=symbol,
             quantity=qty_buy)
-        exec_qty = order['executedQty']
+        exec_qty = float(order['executedQty'])
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_buy) + " Exec QTY: "+ str(exec_qty))
     elif(qty_asset > qty_min):
         order = client.order_market_buy(
             symbol=symbol,
             quantity=qty_min)
-        exec_qty = order['executedQty']
+        exec_qty = float(order['executedQty'])
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_min) + " Exec QTY: "+ str(exec_qty))
     else:
         return
