@@ -128,6 +128,9 @@ def orderbook(args):
     if(qty_asset == 0):
         return
     if quoteAsset != 'USDT' and quoteAsset != 'BUSDT':
+
+        logging.info("Buying " + quoteAsset + " for trade " + symbol)
+        print("Buying " + quoteAsset + " for trade " + symbol)
         assetPrice = float(getCurrentCoinPrice(quoteAsset+'USDT'))
         quotePrice = float(getCurrentCoinPrice(symbol))
         qty_asset = qty_asset * assetPrice
@@ -149,6 +152,8 @@ def orderbook(args):
         buy_qty = order['executedQty']
 
 
+        logging.info("Bought " + quoteAsset + " qty " + str(buy_qty))
+        print("Bought " + quoteAsset + " qty " + str(buy_qty))
 
     else:
         # Calcolo direttamente le quantità se è USDT o BUSD
