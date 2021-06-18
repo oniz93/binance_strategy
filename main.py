@@ -130,21 +130,22 @@ def orderbook(args):
         assetPrice = float(getCurrentCoinPrice(quoteAsset+'USDT'))
     else:
         assetPrice = 1
+    quotePrice = float(getCurrentCoinPrice(symbol))
     if quoteAsset != 'BNB':
-        qty_buy = ((12 + (assetPrice*(high_price-low_price)))/assetPrice)*0.9995
-        qty_min = ((12 + assetPrice)/assetPrice)*0.9995
+        qty_buy = ((12 + (assetPrice*(high_price-low_price)))/assetPrice/quotePrice)*0.9995
+        qty_min = ((12 + assetPrice)/assetPrice/ quotePrice)*0.9995
     else:
-        qty_buy = ((2 + (assetPrice * (high_price - low_price))) / assetPrice)*0.9995
-        qty_min = ((2 + assetPrice) / assetPrice)*0.9995
+        qty_buy = ((2 + (assetPrice * (high_price - low_price))) / assetPrice/quotePrice)*0.9995
+        qty_min = ((2 + assetPrice) / assetPrice/ quotePrice)*0.9995
     if(qty_asset >= qty_buy):
-        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_buy))
+        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_buy) + "value " + str(qty_buy*quotePrice))
         order = client.order_market_buy(
             symbol=symbol,
             quantity=round(qty_buy,quotePrecision))
         exec_qty = float(order['executedQty'])
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_buy) + " Exec QTY: "+ str(exec_qty))
     elif(qty_asset >= qty_min and qty_asset < qty_buy):
-        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_min))
+        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_min) + "value " + str(qty_min*quotePrice))
         order = client.order_market_buy(
             symbol=symbol,
             quantity=round(qty_min,quotePrecision))
