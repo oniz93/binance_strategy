@@ -170,7 +170,7 @@ def orderbook(args):
             if out:
                 twm.stop()
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                order = client.order_market_buy(
+                order = client.order_market_sell(
                     symbol=symbol,
                     quantity=round(exec_qty,quotePrecision))
                 print(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
