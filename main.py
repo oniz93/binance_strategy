@@ -14,6 +14,7 @@ import random
 import time
 from binance import ThreadedWebsocketManager
 import logging
+import math
 
 # create logger with 'spam_application'
 logging.basicConfig(filename='logs/error_new.log',level=logging.INFO)
@@ -130,18 +131,20 @@ def orderbook(args):
     else:
         assetPrice = 1
     if quoteAsset != 'BNB':
-        qty_buy = (12+(assetPrice*(high_price-low_price)))/assetPrice
-        qty_min = (12+assetPrice)/assetPrice
+        qty_buy = ((12 + (assetPrice*(high_price-low_price)))/assetPrice)*0.9995
+        qty_min = ((12 + assetPrice)/assetPrice)*0.9995
     else:
-        qty_buy = (2 + (assetPrice * (high_price - low_price))) / assetPrice
-        qty_min = (2 + assetPrice) / assetPrice
-    if(qty_asset > qty_buy):
+        qty_buy = ((2 + (assetPrice * (high_price - low_price))) / assetPrice)*0.9995
+        qty_min = ((2 + assetPrice) / assetPrice)*0.9995
+    if(qty_asset >= qty_buy):
+        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_buy))
         order = client.order_market_buy(
             symbol=symbol,
             quantity=round(qty_buy,quotePrecision))
         exec_qty = float(order['executedQty'])
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_buy) + " Exec QTY: "+ str(exec_qty))
-    elif(qty_asset > qty_min):
+    elif(qty_asset >= qty_min and qty_asset < qty_buy):
+        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_min))
         order = client.order_market_buy(
             symbol=symbol,
             quantity=round(qty_min,quotePrecision))
@@ -329,9 +332,13 @@ def main():
                     time.sleep(10)
                     for symbol in coins['symbols']:
                         assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
+                        for filt in symbol['filters']:
+                            if filt['filterType'] == 'LOT_SIZE':
+                                precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                                minQty = filt['minQty']
                         # assets = ('USDT')
                         if symbol['quoteAsset'] in assets:
-                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset'], "quotePrecision": symbol['quoteAssetPrecision']}
+                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset'], "quotePrecision": precision, "minQty": minQty}
                             p = Process(target=check_coin, args=(arg,))
                             p.start()
                             workers.append(p)
