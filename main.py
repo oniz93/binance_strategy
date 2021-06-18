@@ -183,6 +183,7 @@ def check_coin(args):
         symbol = args['symbol']
         timeframe = args['timeframe']
         quoteAsset = args['quoteAsset']
+        quotePrecision = args['quotePrecision']
 
         # se risulta aperta gia una posizione per stesso mercato e timeframe ignora i controlli
         if timeframe + "_" + symbol in positions:
