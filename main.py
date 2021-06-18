@@ -117,6 +117,7 @@ def orderbook(args):
     high_price = args['high']
     low_price = args['low']
     quoteAsset = args['quoteAsset']
+    quotePrecision = args['quotePrecision']
 
     client = Client(api_key=api_key, api_secret=api_secret)
     balance = client.get_asset_balance(asset=quoteAsset)
@@ -137,13 +138,13 @@ def orderbook(args):
     if(qty_asset > qty_buy):
         order = client.order_market_buy(
             symbol=symbol,
-            quantity=qty_buy)
+            quantity=round(qty_buy,quotePrecision))
         exec_qty = float(order['executedQty'])
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_buy) + " Exec QTY: "+ str(exec_qty))
     elif(qty_asset > qty_min):
         order = client.order_market_buy(
             symbol=symbol,
-            quantity=qty_min)
+            quantity=round(qty_min,quotePrecision))
         exec_qty = float(order['executedQty'])
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_min) + " Exec QTY: "+ str(exec_qty))
     else:
@@ -167,7 +168,7 @@ def orderbook(args):
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                 order = client.order_market_buy(
                     symbol=symbol,
-                    quantity=exec_qty)
+                    quantity=round(exec_qty,quotePrecision))
                 print(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
         except Exception as e:
             logging.critical(symbol)
@@ -288,7 +289,8 @@ def check_coin(args):
                         "close": check_tick["close"],
                         "low": check_tick["low"],
                         "high": check_tick["high"],
-                        "quoteAsset": quoteAsset
+                        "quoteAsset": quoteAsset,
+                        "quotePrecision": quotePrecision
                     }
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                     file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
@@ -328,7 +330,7 @@ def main():
                         assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
                         # assets = ('USDT')
                         if symbol['quoteAsset'] in assets:
-                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset']}
+                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset'], "quotePrecision": symbol['quoteAssetPrecision']}
                             p = Process(target=check_coin, args=(arg,))
                             p.start()
                             workers.append(p)
