@@ -388,7 +388,11 @@ def main():
                         # assets = ('USDT')
                         if symbol['quoteAsset'] in assets:
                             quotename = str(symbol['quoteAsset']).lower()+"usdt"
-                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset'], "quotePrecision": precision, "minQty": minQty, "assetPrecision": locals()[quotename+"_precision"]}
+                            if symbol['quoteAsset'] in ('USDT', 'BUSD'):
+                                assetPrecision = 8
+                            else:
+                                assetPrecision = locals()[quotename+"_precision"]
+                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset'], "quotePrecision": precision, "minQty": minQty, "assetPrecision": assetPrecision}
                             p = Process(target=check_coin, args=(arg,))
                             p.start()
                             workers.append(p)
