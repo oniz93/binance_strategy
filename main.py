@@ -162,13 +162,15 @@ def orderbook(args):
             buy_qty = qty_min
         else:
             return
-
+    logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
+        buy_qty * quotePrice))
     print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
         buy_qty * quotePrice))
     order = client.order_market_buy(
         symbol=symbol,
         quantity=round(buy_qty, quotePrecision))
     exec_qty = float(order['executedQty'])
+    logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
     print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
 
 
@@ -189,6 +191,8 @@ def orderbook(args):
                 order = client.order_market_sell(
                     symbol=symbol,
                     quantity=round(exec_qty,quotePrecision))
+                logging.info(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
+                print(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
 
                 balance = client.get_asset_balance(asset=quoteAsset)
                 if quoteAsset not in ('USDT', 'BUSD'):
@@ -200,7 +204,6 @@ def orderbook(args):
                             symbol=quoteAsset + 'USDT',
                             quantity=round(balance, assetPrecision))
 
-                print(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
         except Exception as e:
             logging.critical(symbol)
             logging.critical(e, exc_info=True)
