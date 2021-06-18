@@ -119,6 +119,7 @@ def orderbook(args):
     low_price = args['low']
     quoteAsset = args['quoteAsset']
     quotePrecision = args['quotePrecision']
+    assetPrecision = args['assetPrecision']
 
     client = Client(api_key=api_key, api_secret=api_secret)
     balance = client.get_asset_balance(asset=quoteAsset)
@@ -128,32 +129,47 @@ def orderbook(args):
         return
     if quoteAsset != 'USDT' and quoteAsset != 'BUSDT':
         assetPrice = float(getCurrentCoinPrice(quoteAsset+'USDT'))
+        quotePrice = float(getCurrentCoinPrice(symbol))
+        qty_asset = qty_asset * assetPrice
+        if quoteAsset != 'BNB':
+            qty_buy = ((12 + (assetPrice*(high_price-low_price)))/assetPrice)*0.9995
+            qty_min = ((12 + assetPrice)/assetPrice)*0.9995
+        else:
+            qty_buy = ((2 + (assetPrice * (high_price - low_price))) / assetPrice)*0.9995
+            qty_min = ((2 + assetPrice) / assetPrice)*0.9995
+        if qty_asset >= qty_buy:
+            buy_qty = qty_buy
+        elif qty_asset >= qty_min and qty_asset < qty_buy:
+            buy_qty = qty_min
+
+        order = client.order_market_buy(
+            symbol=quoteAsset+'USDT',
+            quantity=round(buy_qty, assetPrecision))
+
+        buy_qty = order['executedQty']
+
+
+
     else:
+        # Calcolo direttamente le quantità se è USDT o BUSD
         assetPrice = 1
-    quotePrice = float(getCurrentCoinPrice(symbol))
-    if quoteAsset != 'BNB':
+        quotePrice = float(getCurrentCoinPrice(symbol))
         qty_buy = ((12 + (assetPrice*(high_price-low_price)))/assetPrice/quotePrice)*0.9995
         qty_min = ((12 + assetPrice)/assetPrice/ quotePrice)*0.9995
-    else:
-        qty_buy = ((2 + (assetPrice * (high_price - low_price))) / assetPrice/quotePrice)*0.9995
-        qty_min = ((2 + assetPrice) / assetPrice/ quotePrice)*0.9995
-    if(qty_asset >= qty_buy):
-        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_buy) + "value " + str(qty_buy*quotePrice))
-        order = client.order_market_buy(
-            symbol=symbol,
-            quantity=round(qty_buy,quotePrecision))
-        exec_qty = float(order['executedQty'])
-        print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_buy) + " Exec QTY: "+ str(exec_qty))
-    elif(qty_asset >= qty_min and qty_asset < qty_buy):
-        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(qty_min) + "value " + str(qty_min*quotePrice))
-        order = client.order_market_buy(
-            symbol=symbol,
-            quantity=round(qty_min,quotePrecision))
-        exec_qty = float(order['executedQty'])
-        print(str(start_datetime) + " - BUY " + symbol + " - QTY: "+ str(qty_min) + " Exec QTY: "+ str(exec_qty))
-    else:
-        return
+        if qty_asset >= qty_buy:
+            buy_qty = qty_buy
+        elif qty_asset >= qty_min and qty_asset < qty_buy:
+            buy_qty = qty_min
+        else:
+            return
 
+    print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
+        buy_qty * quotePrice))
+    order = client.order_market_buy(
+        symbol=symbol,
+        quantity=round(buy_qty, quotePrecision))
+    exec_qty = float(order['executedQty'])
+    print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
 
 
     def check_price(trade):
@@ -173,6 +189,17 @@ def orderbook(args):
                 order = client.order_market_sell(
                     symbol=symbol,
                     quantity=round(exec_qty,quotePrecision))
+
+                balance = client.get_asset_balance(asset=quoteAsset)
+                if quoteAsset not in ('USDT', 'BUSD'):
+                    balance = balance['free']
+                    if quoteAsset == 'BNB':
+                        balance = balance - 0.05
+                    if balance > 0:
+                        order = client.order_market_sell(
+                            symbol=quoteAsset + 'USDT',
+                            quantity=round(balance, assetPrecision))
+
                 print(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
         except Exception as e:
             logging.critical(symbol)
@@ -188,6 +215,7 @@ def check_coin(args):
         timeframe = args['timeframe']
         quoteAsset = args['quoteAsset']
         quotePrecision = args['quotePrecision']
+        assetPrecision = args['assetPrecision']
 
         # se risulta aperta gia una posizione per stesso mercato e timeframe ignora i controlli
         if timeframe + "_" + symbol in positions:
@@ -295,7 +323,8 @@ def check_coin(args):
                         "low": check_tick["low"],
                         "high": check_tick["high"],
                         "quoteAsset": quoteAsset,
-                        "quotePrecision": quotePrecision
+                        "quotePrecision": quotePrecision,
+                        "assetPrecision": assetPrecision
                     }
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                     file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
@@ -322,6 +351,22 @@ def main():
             },
         )
         coins = json.loads(response.content)
+        for symbol in coins['symbols']:
+            if symbol['symbol'] == 'BTCUSDT':
+                for filt in symbol['filters']:
+                    if filt['filterType'] == 'LOT_SIZE':
+                        btcusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        btcusdt_minQty = filt['minQty']
+            if symbol['symbol'] == 'ETHUSDT':
+                for filt in symbol['filters']:
+                    if filt['filterType'] == 'LOT_SIZE':
+                        ethusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        ethusdt_minQty = filt['minQty']
+            if symbol['symbol'] == 'BNBUSDT':
+                for filt in symbol['filters']:
+                    if filt['filterType'] == 'LOT_SIZE':
+                        bnbusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        bnbusdt_minQty = filt['minQty']
         first_start = True
         while True:
             c = 0
@@ -339,7 +384,8 @@ def main():
                                 minQty = filt['minQty']
                         # assets = ('USDT')
                         if symbol['quoteAsset'] in assets:
-                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset'], "quotePrecision": precision, "minQty": minQty}
+                            quotename = str(symbol['quoteAsset']).lower()+"usdt"
+                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quoteAsset": symbol['quoteAsset'], "quotePrecision": precision, "minQty": minQty, "assetPrecision": locals()[quotename+"_precision"]}
                             p = Process(target=check_coin, args=(arg,))
                             p.start()
                             workers.append(p)
