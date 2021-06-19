@@ -151,10 +151,10 @@ def orderbook(args):
             buy_qty = qty_buy
         elif qty_asset >= qty_min and qty_asset < qty_buy:
             buy_qty = qty_min
-        buy_qty = buy_qty / assetPrice  
         minAsset = assetMin * 1.1
         if buy_qty < minAsset:
             buy_qty = minAsset
+        buy_qty = buy_qty / assetPrice
 
         logging.info("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
         print("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
