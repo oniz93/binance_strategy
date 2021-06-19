@@ -118,9 +118,9 @@ def orderbook(args):
     high_price = args['high']
     low_price = args['low']
     quoteAsset = args['quoteAsset']
-    quotePrecision = args['quotePrecision']
-    assetPrecision = args['assetPrecision']
-    assetMin = args['assetMin']
+    quotePrecision = float(args['quotePrecision'])
+    assetPrecision = float(args['assetPrecision'])
+    assetMin = float(args['assetMin'])
 
     logging.info("Found " + symbol + " tf " + timeframe)
     print("Found " + symbol + " tf " + timeframe)
