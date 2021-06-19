@@ -134,10 +134,10 @@ def orderbook(args):
     qty_asset = float(balance['free'])
     if(qty_asset == 0):
         return
-    if quoteAsset != 'USDT' and quoteAsset != 'BUSDT':
+    if quoteAsset != 'USDT' and quoteAsset != 'BUSD':
 
-        logging.info("Buying " + quoteAsset + " for trade " + symbol)
-        print("Buying " + quoteAsset + " for trade " + symbol)
+        logging.info("Buying " + quoteAsset + " for trade " + symbol + "precision" + assetPrecision)
+        print("Buying " + quoteAsset + " for trade " + symbol + "precision" + assetPrecision)
         assetPrice = float(getCurrentCoinPrice(quoteAsset+'USDT'))
         quotePrice = float(getCurrentCoinPrice(symbol))
         qty_asset = qty_asset * assetPrice
@@ -156,7 +156,7 @@ def orderbook(args):
         minAsset = assetMin * 1.1
         if buy_qty < minAsset:
             buy_qty = minAsset
-        buy_qty = round(buy_qty / assetPrice)
+        buy_qty = round(buy_qty / assetPrice, assetPrecision)
 
         logging.info("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
         print("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
