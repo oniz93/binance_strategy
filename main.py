@@ -118,8 +118,8 @@ def orderbook(args):
     high_price = args['high']
     low_price = args['low']
     quoteAsset = args['quoteAsset']
-    quotePrecision = float(args['quotePrecision'])
-    assetPrecision = float(args['assetPrecision'])
+    quotePrecision = args['quotePrecision']
+    assetPrecision = args['assetPrecision']
     assetMin = float(args['assetMin'])
 
     logging.info("Found " + symbol + " tf " + timeframe)
