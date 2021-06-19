@@ -151,17 +151,19 @@ def orderbook(args):
             buy_qty = qty_buy
         elif qty_asset >= qty_min and qty_asset < qty_buy:
             buy_qty = qty_min
+        else:
+            buy_qty = 0
         minAsset = assetMin * 1.1
         if buy_qty < minAsset:
             buy_qty = minAsset
-        buy_qty = buy_qty / assetPrice
+        buy_qty = round(buy_qty / assetPrice)
 
         logging.info("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
         print("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
 
         order = client.order_market_buy(
             symbol=quoteAsset+'USDT',
-            quantity=round(buy_qty, assetPrecision))
+            quantity=buy_qty)
 
         buy_qty = order['executedQty']
 
