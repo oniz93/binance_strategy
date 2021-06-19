@@ -122,6 +122,9 @@ def orderbook(args):
     assetPrecision = args['assetPrecision']
     assetMin = args['assetMin']
 
+    logging.info("Found " + symbol + " tf " + timeframe)
+    print("Found " + symbol + " tf " + timeframe)
+
     client = Client(api_key=api_key, api_secret=api_secret)
     if quoteAsset == 'BUSD':
         balance = client.get_asset_balance(asset='BUSD')
@@ -139,19 +142,22 @@ def orderbook(args):
         quotePrice = float(getCurrentCoinPrice(symbol))
         qty_asset = qty_asset * assetPrice
         if quoteAsset != 'BNB':
-            qty_buy = ((12 + (assetPrice*(high_price-low_price)))/assetPrice)
-            qty_min = ((12 + assetPrice)/assetPrice)
+            qty_buy = ((12 + (qty_asset * (high_price - low_price))) / assetPrice)
+            qty_min = ((12 + qty_asset)/assetPrice)
         else:
-            qty_buy = ((2 + (assetPrice * (high_price - low_price))) / assetPrice)
-            qty_min = ((2 + assetPrice) / assetPrice)
+            qty_buy = ((2 + (qty_asset * (high_price - low_price))) / assetPrice)
+            qty_min = ((2 + qty_asset) / assetPrice)
         if qty_asset >= qty_buy:
             buy_qty = qty_buy
         elif qty_asset >= qty_min and qty_asset < qty_buy:
             buy_qty = qty_min
 
-        minAsset = assetMin * assetPrice * 1.1
+        minAsset = assetMin * 1.1
         if buy_qty < minAsset:
             buy_qty = minAsset
+
+        logging.info("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
+        print("Making order " + quoteAsset+'USDT' + " qty " + str(buy_qty))
 
         order = client.order_market_buy(
             symbol=quoteAsset+'USDT',
@@ -207,8 +213,8 @@ def orderbook(args):
                 logging.info(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
                 print(str(current_time) + " - SELL " + symbol + " - QTY: "+ str(exec_qty) + " Exec QTY: "+ str(order['executedQty']))
 
-                balance = client.get_asset_balance(asset=quoteAsset)
                 if quoteAsset not in ('USDT', 'BUSD'):
+                    balance = client.get_asset_balance(asset=quoteAsset)
                     balance = balance['free']
                     if quoteAsset == 'BNB':
                         balance = balance - 0.05
@@ -216,6 +222,12 @@ def orderbook(args):
                         order = client.order_market_sell(
                             symbol=quoteAsset + 'USDT',
                             quantity=round(balance, assetPrecision))
+                        logging.info(
+                            str(current_time) + " - SELL " + quoteAsset + " - QTY: " + str(balance) + " Exec QTY: " + str(
+                                order['executedQty']))
+                        print(
+                            str(current_time) + " - SELL " + quoteAsset + " - QTY: " + str(balance) + " Exec QTY: " + str(
+                                order['executedQty']))
 
         except Exception as e:
             logging.critical(symbol)
