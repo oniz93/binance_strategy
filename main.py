@@ -226,7 +226,7 @@ def orderbook(args):
                     balance = client.get_asset_balance(asset=quote_asset)
                     balance = float(balance['free'])
                     if quote_asset == 'BNB':
-                        balance = balance - 0.05
+                        balance = float(balance - 0.05)
                     if balance > 0:
                         order = client.order_market_sell(
                             symbol=quote_asset + 'USDT',
@@ -439,7 +439,7 @@ def main():
                                 precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
                                 minQty = filt['minQty']
                         # assets = ('USDT')
-                        if symbol['quoteAsset'] in assets and symbol['symbol'] in ("GTCBTC", "AIONETH", "PERLUSDT"):
+                        if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT"):
                             quotename = str(symbol['quoteAsset']).lower() + "usdt"
                             if symbol['quoteAsset'] in ('USDT', 'BUSD'):
                                 asset_precision = 8
