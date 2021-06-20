@@ -458,7 +458,7 @@ def main():
                     for symbol in coins['symbols']:
                         assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
                         # assets = ('USDT')
-                        if symbol['quoteAsset'] in assets and symbol['symbol'] in ("GTCBTC", "AIONETH", "PERLUSDT"):
+                        if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT"):
                             arg = {"symbol": symbol['symbol'], "timeframe": timeframe}
                             p = Process(target=check_coin, args=(arg,))
                             p.start()
