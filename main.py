@@ -146,32 +146,38 @@ def orderbook(args):
             asset_min))
         asset_price = float(getCurrentCoinPrice(quote_asset + 'USDT'))
         quote_price = float(getCurrentCoinPrice(symbol))
-        qty_asset = qty_asset * asset_price
-        if quote_asset != 'BNB':
-            qty_buy = ((12 + (qty_asset * (high_price - low_price))) / asset_price)
-            qty_min = ((12 + qty_asset) / asset_price)
-        else:
-            qty_buy = ((2 + (qty_asset * (high_price - low_price))) / asset_price)
-            qty_min = ((2 + qty_asset) / asset_price)
-        if qty_asset >= qty_buy:
-            buy_qty = qty_buy
-        elif qty_min <= qty_asset < qty_buy:
-            buy_qty = qty_min
-        else:
-            buy_qty = 0
-        minAsset = asset_min * 1.1
-        if buy_qty < minAsset:
-            buy_qty = minAsset
-        buy_qty = round(buy_qty / asset_price, asset_precision)
+        #qty_asset = qty_asset * asset_price
+        # if quote_asset != 'BNB':
+        #     qty_buy = ((12 + (qty_asset * (high_price - low_price))) / asset_price)
+        #     qty_min = ((12 + qty_asset) / asset_price)
+        # else:
+        #     qty_buy = ((2 + (qty_asset * (high_price - low_price))) / asset_price)
+        #     qty_min = ((2 + qty_asset) / asset_price)
+        # if qty_asset >= qty_buy:
+        #     buy_qty = qty_buy
+        # elif qty_min <= qty_asset < qty_buy:
+        #     buy_qty = qty_min
+        # else:
+        #     buy_qty = 0
+        # minAsset = asset_min * 1.1
+        # if buy_qty < minAsset:
+        #     buy_qty = minAsset
+        buy_qty = 30 * 0.999
+        if buy_qty > qty_asset:
+            buy_qty = 15 * 0.999
+            if buy_qty > qty_asset:
+                return
+
+        buy_qty = round(buy_qty, asset_precision)
 
         logging.info("Making order " + quote_asset + 'USDT' + " qty " + str(buy_qty))
         print("Making order " + quote_asset + 'USDT' + " qty " + str(buy_qty))
 
         order = client.order_market_buy(
             symbol=quote_asset + 'USDT',
-            quantity=buy_qty)
+            quoteOrderQty=buy_qty)
 
-        buy_qty = float(order['executedQty']) / quote_price * 0.999
+        buy_qty = float(order['executedQty']) * 0.999
 
         logging.info("Bought " + quote_asset + " qty " + str(buy_qty))
         print("Bought " + quote_asset + " qty " + str(buy_qty))
@@ -180,23 +186,30 @@ def orderbook(args):
         # Calcolo direttamente le quantità se è USDT o BUSD
         asset_price = 1
         quote_price = float(getCurrentCoinPrice(symbol))
-        qty_buy = ((12 + (asset_price * (high_price - low_price))) / asset_price / quote_price)
-        qty_min = ((12 + asset_price) / asset_price / quote_price)
-        if qty_asset >= qty_buy:
-            buy_qty = qty_buy
-        elif qty_min <= qty_asset < qty_buy:
-            buy_qty = qty_min
-        else:
-            return
+        # qty_buy = ((12 + (asset_price * (high_price - low_price))) / asset_price / quote_price)
+        # qty_min = ((12 + asset_price) / asset_price / quote_price)
+        # if qty_asset >= qty_buy:
+        #     buy_qty = qty_buy
+        # elif qty_min <= qty_asset < qty_buy:
+        #     buy_qty = qty_min
+        # else:
+        #     return
+
+        buy_qty = 30 * 0.999
+        if buy_qty > qty_asset:
+            buy_qty = 15 * 0.999
+            if buy_qty > qty_asset:
+                return
 
     logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
         buy_qty * quote_price))
     print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
         buy_qty * quote_price))
+    buy_qty = f"{buy_qty:.{quote_precision}f}"
     order = client.order_market_buy(
         symbol=symbol,
-        quantity=round(buy_qty, quote_precision))
-    exec_qty = float(order['executedQty'])
+        quoteOrderQty=buy_qty)
+    exec_qty = float(order['executedQty']) * 0.999
     logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
     print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
 
@@ -407,22 +420,31 @@ def main():
                 for filt in symbol['filters']:
                     if filt['filterType'] == 'LOT_SIZE':
                         btcusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        btcusdt_minQty2 = filt['minQty']
                     if filt['filterType'] == 'MIN_NOTIONAL':
                         btcusdt_minQty = filt['minNotional']
+                if btcusdt_minQty2 > btcusdt_minQty:
+                    btcusdt_minQty = btcusdt_minQty2
             if symbol['symbol'] == 'ETHUSDT':
                 print(symbol)
                 for filt in symbol['filters']:
                     if filt['filterType'] == 'LOT_SIZE':
                         ethusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        ethusdt_minQty2 = filt['minQty']
                     if filt['filterType'] == 'MIN_NOTIONAL':
                         ethusdt_minQty = filt['minNotional']
+                if ethusdt_minQty2 > ethusdt_minQty:
+                    ethusdt_minQty = ethusdt_minQty2
             if symbol['symbol'] == 'BNBUSDT':
                 print(symbol)
                 for filt in symbol['filters']:
                     if filt['filterType'] == 'LOT_SIZE':
                         bnbusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        bnbusdt_minQty2 = filt['minQty']
                     if filt['filterType'] == 'MIN_NOTIONAL':
                         bnbusdt_minQty = filt['minNotional']
+                if bnbusdt_minQty2 > bnbusdt_minQty:
+                    bnbusdt_minQty = bnbusdt_minQty2
         first_start = True
         while True:
             c = 0
@@ -437,7 +459,11 @@ def main():
                         for filt in symbol['filters']:
                             if filt['filterType'] == 'LOT_SIZE':
                                 precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
-                                minQty = filt['minQty']
+                                minQty2 = filt['minQty']
+                            if filt['filterType'] == 'MIN_NOTIONAL':
+                                minQty = filt['minNotional']
+                        if minQty2 > minQty:
+                            minQty = minQty2
                         # assets = ('USDT')
                         if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT"):
                             quotename = str(symbol['quoteAsset']).lower() + "usdt"
