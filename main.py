@@ -197,7 +197,7 @@ def orderbook(args):
                 balance = 300
                 buy_qty = float((min_qty*base_price) + (((balance * config['perc_rischio']/100)/ round(((close_price - open_price) * 100 ) / price * 100)) * 10))
 
-                usdt_gain = gain * base_price * buy_qty
+                usdt_gain = gain * buy_qty
 
                 twm.stop()
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
