@@ -14,6 +14,7 @@ import random
 import time
 from binance import ThreadedWebsocketManager
 import logging
+import math
 
 # create logger with 'spam_application'
 logging.basicConfig(filename='logs/error.log',level=logging.INFO)
@@ -22,7 +23,7 @@ def createLogHeaders(path):
     if not os.path.exists(path):
         file_currency = open(path, 'a')
         file_currency.write(
-            '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low"\n')
+            '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low","Buy Qty","USD Gain"\n')
         file_currency.close()
 
 def timeframeToSeconds(tf):
@@ -85,6 +86,11 @@ def orderbook(args):
     close_price = args['close']
     high_price = args['high']
     low_price = args['low']
+    quote_asset = args['quote_asset']
+    quote_precision = args['quote_precision']
+    asset_precision = args['asset_precision']
+    asset_min = float(args['asset_min'])
+    min_qty = float(args['min_qty'])
     print(str(start_datetime) + " - Start check price "+symbol+" tf "+timeframe)
 
     def check_price(trade):
@@ -188,15 +194,20 @@ def orderbook(args):
                 else:
                     base_price = 1
 
+                balance = 300
+                buy_qty = float((min_qty*base_price) + (((balance * config['perc_rischio']/100)/ round(((close_price - open_price) * 100 ) / price * 100)) * 10))
+
+                usdt_gain = gain * base_price * buy_qty
+
                 twm.stop()
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                 log_path = cwd + "/csv/"+ strategy +".csv"
                 createLogHeaders(log_path)
                 file_currency = open(log_path, 'a')
                 file_currency.write(
-                    "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f}\n".format(
+                    "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(
                         strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct),
-                        stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price))
+                        stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain))
                 file_currency.close()
                 positions.remove(timeframe + "_" + symbol)
                 print(str(start_datetime) + " - End check price "+symbol+" tf "+timeframe)
@@ -215,6 +226,11 @@ def check_coin(args):
     try:
         symbol = args['symbol']
         timeframe = args['timeframe']
+        quote_asset = args['quote_asset']
+        quote_precision = args['quote_precision']
+        asset_precision = args['asset_precision']
+        asset_min = args['asset_min']
+        min_qty = args['minQty']
 
         # se risulta aperta gia una posizione per stesso mercato e timeframe ignora i controlli
         if timeframe + "_" + symbol in positions:
@@ -272,7 +288,7 @@ def check_coin(args):
             if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4'] and check_tick['low'] > \
                     check_tick['EMA_9'] and check_tick['low'] > check_tick['EMA_40']:
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
-                stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low'])*1.2
+                stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
                 response = requests.get(
                     url="https://api.binance.com/api/v3/depth",
                     params={
@@ -320,7 +336,12 @@ def check_coin(args):
                         "open": check_tick['open'],
                         "close": check_tick["close"],
                         "low": check_tick["low"],
-                        "high": check_tick["high"]
+                        "high": check_tick["high"],
+                        "quote_asset": quote_asset,
+                        "quote_precision": quote_precision,
+                        "asset_precision": asset_precision,
+                        "asset_min": asset_min,
+                        "min_qty": min_qty
                     }
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                     file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
@@ -350,11 +371,16 @@ def check_coin(args):
                         "stop_loss": stop_loss,
                         "take_profit": take_profit * multiplier,
                         "timeframe": timeframe,
-                        "strategy": "ema4-ema9-ema40-tp" + str(multiplier)+"-diff0.9",
+                        "strategy": "ema4-ema9-ema40-tp" + str(multiplier)+"-pp0.9",
                         "open": check_tick['open'],
                         "close": check_tick["close"],
                         "low": check_tick["low"],
-                        "high": check_tick["high"]
+                        "high": check_tick["high"],
+                        "quote_asset": quote_asset,
+                        "quote_precision": quote_precision,
+                        "asset_precision": asset_precision,
+                        "asset_min": asset_min,
+                        "min_qty": min_qty
                     }
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                     file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
@@ -419,7 +445,12 @@ def check_coin(args):
                         "open": check_tick['open'],
                         "close": check_tick["close"],
                         "low": check_tick["low"],
-                        "high": check_tick["high"]
+                        "high": check_tick["high"],
+                        "quote_asset": quote_asset,
+                        "quote_precision": quote_precision,
+                        "asset_precision": asset_precision,
+                        "asset_min": asset_min,
+                        "min_qty": min_qty
                     }
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                     file_currency = open(cwd + "/log/" + symbol + "_" + timeframe + ".log", 'a')
@@ -446,6 +477,37 @@ def main():
             },
         )
         coins = json.loads(response.content)
+        for symbol in coins['symbols']:
+            if symbol['symbol'] == 'BTCUSDT':
+                print(symbol)
+                for filt in symbol['filters']:
+                    if filt['filterType'] == 'LOT_SIZE':
+                        btcusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        btcusdt_minQty2 = filt['minQty']
+                    if filt['filterType'] == 'MIN_NOTIONAL':
+                        btcusdt_minQty = filt['minNotional']
+                if btcusdt_minQty2 > btcusdt_minQty:
+                    btcusdt_minQty = btcusdt_minQty2
+            if symbol['symbol'] == 'ETHUSDT':
+                print(symbol)
+                for filt in symbol['filters']:
+                    if filt['filterType'] == 'LOT_SIZE':
+                        ethusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        ethusdt_minQty2 = filt['minQty']
+                    if filt['filterType'] == 'MIN_NOTIONAL':
+                        ethusdt_minQty = filt['minNotional']
+                if ethusdt_minQty2 > ethusdt_minQty:
+                    ethusdt_minQty = ethusdt_minQty2
+            if symbol['symbol'] == 'BNBUSDT':
+                print(symbol)
+                for filt in symbol['filters']:
+                    if filt['filterType'] == 'LOT_SIZE':
+                        bnbusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                        bnbusdt_minQty2 = filt['minQty']
+                    if filt['filterType'] == 'MIN_NOTIONAL':
+                        bnbusdt_minQty = filt['minNotional']
+                if bnbusdt_minQty2 > bnbusdt_minQty:
+                    bnbusdt_minQty = bnbusdt_minQty2
         first_start = True
         while True:
             c = 0
@@ -456,10 +518,27 @@ def main():
                     print(str(current_time) + " - Start TF: " + timeframe)
                     time.sleep(10)
                     for symbol in coins['symbols']:
-                        assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
+                        assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB', 'EUR')
+                        for filt in symbol['filters']:
+                            if filt['filterType'] == 'LOT_SIZE':
+                                precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                                minQty2 = filt['minQty']
+                            if filt['filterType'] == 'MIN_NOTIONAL':
+                                minQty = filt['minNotional']
+                        if minQty2 > minQty:
+                            minQty = minQty2
                         # assets = ('USDT')
                         if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT"):
-                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe}
+                            quotename = str(symbol['quoteAsset']).lower() + "usdt"
+                            if symbol['quoteAsset'] in ('USDT', 'BUSD', 'EUR'):
+                                asset_precision = 8
+                                assetMin = 10
+                            else:
+                                asset_precision = locals()[quotename + "_precision"]
+                                assetMin = locals()[quotename + "_minQty"]
+                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe,
+                                   "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty,
+                                   "asset_precision": asset_precision, "asset_min": assetMin}
                             p = Process(target=check_coin, args=(arg,))
                             p.start()
                             workers.append(p)
@@ -468,6 +547,15 @@ def main():
                                 time.sleep(60)
             first_start = False
             time.sleep(1)
+
+
+    except KeyboardInterrupt:
+        print("control-c")
+        for p in workers:
+            p.terminate()
+            p.join()
+    except Exception as e:
+        logging.critical(e, exc_info=True)
 
 
     except KeyboardInterrupt:
