@@ -13,7 +13,13 @@ from multiprocessing import Process
 import random
 import time
 from binance import ThreadedWebsocketManager
-
+cwd = os.getcwd()
+configfile = open(cwd + "/cfg.json", 'r')
+config = json.loads(configfile.read())
+configfile.close()
+timeframes = config['timeframes']
+workers = list()
+positions = []
 
 def timeframeToSeconds(tf):
     if tf == '1m':
@@ -165,23 +171,16 @@ def check_coin(args):
                 workers.append(p)
 
 if __name__ == "__main__":
-    response = requests.get(
-        url="https://api.binance.com/api/v3/exchangeInfo",
-        params={
-        },
-        headers={
-            "Content-Type": "application/json",
-        },
-    )
-    coins = json.loads(response.content)
-    for symbol in coins['symbols']:
-        if symbol['symbol'] == 'BTCUSDT':
-            print(symbol)
-            for filt in symbol['filters']:
-                if filt['filterType'] == 'LOT_SIZE':
-                    btcusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
-                    btcusdt_minQty2 = filt['minQty']
-                if filt['filterType'] == 'MIN_NOTIONAL':
-                    btcusdt_minQty = filt['minNotional']
-            if btcusdt_minQty2 > btcusdt_minQty:
-                btcusdt_minQty = btcusdt_minQty2
+   client = Client(api_key = config['binance_key'], api_secret = config['binance_secret'])
+   balance = client.get_asset_balance(asset='USDT')
+   symbol = 'BUSDUSDT'
+   quote_precision = 8
+   buy_qty = 11
+   stop_loss = 0.9
+   exec_qty = round(11,4)
+   output = client.create_order(symbol=symbol, type='STOP_LOSS', quantity=exec_qty, side="sell", stopPrice=stop_loss)
+   print(output)
+   take_profit = 1.1
+   output = client.create_order(symbol=symbol, type='TAKE_PROFIT', quantity=exec_qty, side="sell", stopPrice=take_profit)
+
+   print(output)
