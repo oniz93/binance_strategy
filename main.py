@@ -162,9 +162,9 @@ def orderbook(args):
         # minAsset = asset_min * 1.1
         # if buy_qty < minAsset:
         #     buy_qty = minAsset
-        buy_qty = 30 * 0.999
+        buy_qty = 30
         if buy_qty > qty_asset:
-            buy_qty = 15 * 0.999
+            buy_qty = 15
             if buy_qty > qty_asset:
                 return
 
@@ -186,32 +186,27 @@ def orderbook(args):
         # Calcolo direttamente le quantità se è USDT o BUSD
         asset_price = 1
         quote_price = float(getCurrentCoinPrice(symbol))
-        # qty_buy = ((12 + (asset_price * (high_price - low_price))) / asset_price / quote_price)
-        # qty_min = ((12 + asset_price) / asset_price / quote_price)
-        # if qty_asset >= qty_buy:
-        #     buy_qty = qty_buy
-        # elif qty_min <= qty_asset < qty_buy:
-        #     buy_qty = qty_min
-        # else:
-        #     return
-
-        buy_qty = 30 * 0.999
-        if buy_qty > qty_asset:
-            buy_qty = 15 * 0.999
-            if buy_qty > qty_asset:
-                return
+        buy_qty = asset_min + \
+                  ( ((qty_asset - asset_min) * float(config['perc_rischio'])/100) \
+                    / round(((close_price - open_price) * 100 / (quote_price * 100)),2) * 10 )
 
     logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
         buy_qty * quote_price))
     print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
         buy_qty * quote_price))
-    buy_qty = f"{buy_qty:.{quote_precision}f}"
     order = client.order_market_buy(
         symbol=symbol,
-        quoteOrderQty=buy_qty)
-    exec_qty = float(order['executedQty']) * 0.999
+        quoteOrderQty=round(buy_qty, quote_precision))
+    exec_qty = float(order['executedQty'])
     logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
     print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
+
+
+    params = {'stopPrice': stop_loss}
+    output = client.createOrder(symbol, 'STOP_LOSS_LIMIT', amount=exec_qty, side="sell", price=stop_loss, params=params)
+
+    params = {'stopPrice': take_profit}
+    output = client.createOrder(symbol, 'TAKE_PROFIT_LIMIT', amount=exec_qty, side="sell", price=take_profit, params=params)
 
     def check_price(trade):
         try:
@@ -455,7 +450,8 @@ def main():
                     print(str(current_time) + " - Start TF: " + timeframe)
                     time.sleep(10)
                     for symbol in coins['symbols']:
-                        assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
+                        #assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
+                        assets = ('USDT', 'BUSD')
                         for filt in symbol['filters']:
                             if filt['filterType'] == 'LOT_SIZE':
                                 precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
