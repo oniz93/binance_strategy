@@ -165,4 +165,23 @@ def check_coin(args):
                 workers.append(p)
 
 if __name__ == "__main__":
-   check_coin({"symbol": "ETHUSDT", "timeframe": "15m"})
+    response = requests.get(
+        url="https://api.binance.com/api/v3/exchangeInfo",
+        params={
+        },
+        headers={
+            "Content-Type": "application/json",
+        },
+    )
+    coins = json.loads(response.content)
+    for symbol in coins['symbols']:
+        if symbol['symbol'] == 'BTCUSDT':
+            print(symbol)
+            for filt in symbol['filters']:
+                if filt['filterType'] == 'LOT_SIZE':
+                    btcusdt_precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                    btcusdt_minQty2 = filt['minQty']
+                if filt['filterType'] == 'MIN_NOTIONAL':
+                    btcusdt_minQty = filt['minNotional']
+            if btcusdt_minQty2 > btcusdt_minQty:
+                btcusdt_minQty = btcusdt_minQty2

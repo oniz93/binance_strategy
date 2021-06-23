@@ -166,19 +166,27 @@ def orderbook(args):
 
 
 if __name__ == "__main__":
-   args = {
-       "symbol": "ethbtc",
-       "c_t": 3,
-       "c_l": 0,
-       "c_ct": 2,
-       "price": 0.061512,
-       "stop_loss": 0.061500,
-       "take_profit": 0.061580,
-       "timeframe": "15m",
-       "strategy": "prova",
-       "open": 1,
-       "close": 2,
-       "high": 3,
-       "low": 0.9
-   }
-   orderbook(args)
+   #args = {
+   #    "symbol": "ethbtc",
+   #    "c_t": 3,
+   #    "c_l": 0,
+   #    "c_ct": 2,
+   #    "price": 0.061512,
+   #    "stop_loss": 0.061500,
+   #    "take_profit": 0.061580,
+   #    "timeframe": "15m",
+   #    "strategy": "prova",
+   #    "open": 1,
+   #    "close": 2,
+   #    "high": 3,
+   #    "low": 0.9
+   #}
+   #orderbook(args)
+
+    api_key = config['binance_key']
+    api_secret = config['binance_secret']
+    client = Client(api_key=api_key, api_secret=api_secret)
+    order = client.order_market_buy(
+        symbol='BTCUSDT',
+        quoteOrderQty=11)
+    print(order)
