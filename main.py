@@ -145,7 +145,7 @@ def orderbook(args):
 
     
     max_buy_qty = min_qty +  ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
-    buy_qty = min_qty + ( ((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price))
+    buy_qty = min_qty + ( ((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price) * 10)
     if buy_qty > max_buy_qty:
         buy_qty = max_buy_qty
 
