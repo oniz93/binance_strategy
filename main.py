@@ -160,7 +160,7 @@ def orderbook(args):
     print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
 
     def check_price(trade):
-        if trade['e'] == 'error':
+        if trade['data']['e'] == 'error':
             twm.stop()
             twm.start_multiplex_socket(callback=check_price, streams=streams)
             twm.join()
