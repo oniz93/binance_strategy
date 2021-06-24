@@ -339,8 +339,7 @@ def main():
                     print(str(current_time) + " - Start TF: " + timeframe)
                     time.sleep(10)
                     for symbol in coins['symbols']:
-                        #assets = ('ETH', 'USDT', 'BUSD', 'BTC', 'BNB')
-                        assets = ('USDT', 'BUSD', 'EUR')
+                        assets = config['assets']
                         for filt in symbol['filters']:
                             if filt['filterType'] == 'LOT_SIZE':
                                 precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
