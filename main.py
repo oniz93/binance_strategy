@@ -265,15 +265,15 @@ def check_coin(args):
         c_ct = 0
         control_ticks = df[-21:-1]
         for index, tick in control_ticks.iterrows():
-            if tick['EMA_40_high'] > tick['EMA_9'] and tick['EMA_9'] > tick['EMA_40_low']:
+            if tick['EMA_40_high'] > tick['EMA_9_OHLC4'] and tick['EMA_9_OHLC4'] > tick['EMA_40_low']:
                 c_l = c_l + 1
-            if tick['EMA_9'] > tick['EMA_40_high']:
+            if tick['EMA_9_OHLC4'] > tick['EMA_40_high']:
                 c_t = c_t + 1
-            if tick['EMA_9'] < tick['EMA_40_low']:
+            if tick['EMA_9_OHLC4'] < tick['EMA_40_low']:
                 c_ct = c_ct + 1
 
         for index, check_tick in check_ticks.iterrows():
-            if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4'] and check_tick['low'] > check_tick['EMA_9'] and check_tick['low'] > check_tick['EMA_40']:
+            if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']:
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
 
