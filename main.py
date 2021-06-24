@@ -128,7 +128,7 @@ def orderbook(args):
     low_price = float(args['low'])
     quote_asset = args['quote_asset']
     quote_precision = args['quote_precision']
-    min_qty = args['min_qty']
+    min_qty = float(args['min_qty'])
 
     logging.info("Found " + symbol + " tf " + timeframe)
     print("Found " + symbol + " tf " + timeframe)
@@ -139,21 +139,18 @@ def orderbook(args):
 
     qty_asset = float(balance['free'])
     if qty_asset < min_qty:
+        print("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
+        logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
         return
 
     
-    max_buy_qty = min_qty + \
-                  ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
-    buy_qty = min_qty + \
-                  ( ((qty_asset - min_qty) * float(config['perc_rischio'])/100) \
-                    * ((high_price - low_price) * 1.2 / price))
+    max_buy_qty = min_qty +  ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
+    buy_qty = min_qty + ( ((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price))
     if buy_qty > max_buy_qty:
         buy_qty = max_buy_qty
 
-    logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
-        buy_qty * price))
-    print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(
-        buy_qty * price))
+    logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
+    print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
 
     order = client.order_market_buy(
         symbol=symbol,
@@ -184,10 +181,8 @@ def orderbook(args):
                     order = client.order_market_sell(
                         symbol=symbol,
                         quantity=round(exec_qty, quote_precision))
-                    logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(
-                        order['executedQty']))
-                    print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(
-                        order['executedQty']))
+                    logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                    print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
 
                     base_price = 1
 
@@ -197,11 +192,7 @@ def orderbook(args):
                     createLogHeaders(log_path)
                     file_currency = open(log_path, 'a')
                     file_currency.write(
-                        "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(
-                            strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t),
-                            str(c_l), str(c_ct),
-                            stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price,
-                            low_price, buy_qty, usdt_gain))
+                        "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain))
                     file_currency.close()
                     positions.remove(timeframe + "_" + symbol)
 
@@ -228,7 +219,7 @@ def check_coin(args):
 
         # se risulta aperta gia una posizione per stesso mercato e timeframe ignora i controlli
         if timeframe + "_" + symbol in positions:
-            return
+            return True
 
         current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
         # print("%s - Get tick %s timeframe %s" % (str(current_time), symbol, timeframe))
@@ -264,8 +255,8 @@ def check_coin(args):
             df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=40,
                       suffix="OHLC4", append=True)
         except Exception as e:
-            logging.critical(symbol)
-            return
+            logging.critical(symbol + "not enough candles")
+            return True
 
         check_ticks = df[-2:-1]
 
@@ -282,8 +273,7 @@ def check_coin(args):
                 c_ct = c_ct + 1
 
         for index, check_tick in check_ticks.iterrows():
-            if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4'] and check_tick[
-                'low'] > check_tick['EMA_9'] and check_tick['low'] > check_tick['EMA_40']:
+            if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4'] and check_tick['low'] > check_tick['EMA_9'] and check_tick['low'] > check_tick['EMA_40']:
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
 
@@ -321,6 +311,7 @@ def check_coin(args):
 
                     positions.append(timeframe + "_" + symbol)
                     #apre una posizione
+                    print("Apro posizione " + symbol + " TF " + timeframe)
                     orderbook(args)
 
     except Exception as e:
