@@ -16,18 +16,18 @@ from binance import ThreadedWebsocketManager
 import logging
 import math
 
-# create logger with 'spam_application'
 logging.basicConfig(filename='logs/error_new.log', level=logging.INFO)
 
-
+# crea il file con l'header
 def createLogHeaders(path):
     if not os.path.exists(path):
         file_currency = open(path, 'a')
         file_currency.write(
-            '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low"\n')
+            '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low", "QT", "USD Gain"\n')
         file_currency.close()
 
 
+# converte i TF dei settings in secondi
 def timeframeToSeconds(tf):
     if tf == '1m':
         return 60
@@ -58,9 +58,10 @@ def timeframeToSeconds(tf):
     elif tf == '1w':
         return 60 * 60 * 24 * 7
     else:
-        return 60 * 60
+        return False
 
 
+# legge il config e istanza le varibili globali
 cwd = os.getcwd()
 configfile = open(cwd + "/cfg.json", 'r')
 config = json.loads(configfile.read())
@@ -69,7 +70,7 @@ timeframes = config['timeframes']
 workers = list()
 positions = list()
 
-
+# recupera la media tra ask e bid di una moneta
 def getCurrentCoinPrice(symbol):
     searchPrice = True
     limit = 10
@@ -104,68 +105,97 @@ def getCurrentCoinPrice(symbol):
             logging.critical(symbol)
             logging.critical(e, exc_info=True)
     logging.critical("No trades found for symbol %s " % (symbol,))
-    exit()
+    exit("KILL Process - No trades found for symbol %s " % (symbol,))
 
-
+# crea l'ordine e monitora il prezzo per vendere
 def orderbook(args):
-    start_datetime = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-    api_key = config['binance_key']
-    api_secret = config['binance_secret']
-    twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
-    twm.start()
-    symbol = args['symbol']
-    c_t = args['c_t']
-    c_l = args['c_l']
-    c_ct = args['c_ct']
-    price = float(args['price'])
-    take_profit = float(args['take_profit'])
-    stop_loss = float(args['stop_loss'])
-    timeframe = args['timeframe']
-    strategy = args['strategy']
-    open_price = float(args['open'])
-    close_price = float(args['close'])
-    high_price = float(args['high'])
-    low_price = float(args['low'])
-    quote_asset = args['quote_asset']
-    quote_precision = args['quote_precision']
-    min_qty = float(args['min_qty'])
+    try:
+        # recupero di tutti i parametri
+        start_datetime = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+        api_key = config['binance_key']
+        api_secret = config['binance_secret']
+        symbol = args['symbol']
+        c_t = args['c_t']
+        c_l = args['c_l']
+        c_ct = args['c_ct']
+        price = float(args['price'])
+        take_profit = float(args['take_profit'])
+        stop_loss = float(args['stop_loss'])
+        timeframe = args['timeframe']
+        strategy = args['strategy']
+        open_price = float(args['open'])
+        close_price = float(args['close'])
+        high_price = float(args['high'])
+        low_price = float(args['low'])
+        quote_asset = args['quote_asset']
+        quote_precision = args['quote_precision']
+        min_qty = float(args['min_qty'])
 
-    logging.info("Found " + symbol + " tf " + timeframe)
-    print("Found " + symbol + " tf " + timeframe)
+        logging.info("Found " + symbol + " tf " + timeframe)
+        print("Found " + symbol + " tf " + timeframe)
 
-    client = Client(api_key=api_key, api_secret=api_secret)
+        client = Client(api_key=api_key, api_secret=api_secret)
+        balance = client.get_asset_balance(asset=quote_asset)
+        qty_asset = float(balance['free'])
+        logging.info("Quote asset: " + quote_asset + " Balance: " + str(qty_asset))
 
-    balance = client.get_asset_balance(asset=quote_asset)
+        # quando non ci sono abbastanza soldi per la quantità minima della coppia
+        if qty_asset < min_qty:
+            print("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
+            logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
+            return
 
-    qty_asset = float(balance['free'])
-    if qty_asset < min_qty:
-        print("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
-        logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
-        return
+        # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
+        max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
+        buy_qty = min_qty + ( ((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price) * 10)
+        if buy_qty > max_buy_qty:
+            buy_qty = max_buy_qty
 
-    
-    max_buy_qty = min_qty +  ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
-    buy_qty = min_qty + ( ((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price) * 10)
-    if buy_qty > max_buy_qty:
-        buy_qty = max_buy_qty
+        logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
+        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
 
-    logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
-    print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
+        order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
+        exec_qty = float(order['executedQty'])
+        logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
+        print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
 
-    order = client.order_market_buy(
-        symbol=symbol,
-        quoteOrderQty=round(buy_qty, quote_precision))
-    exec_qty = float(order['executedQty'])
-    logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
-    print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
+    except Exception as e:
+        logging.critical(e, exc_info=True)
 
     def check_price(trade):
-        if trade['data']['e'] == 'error':
-            twm.stop()
-            twm.start_multiplex_socket(callback=check_price, streams=streams)
-            twm.join()
+        ws_error = False
+        try:
+            ws_error = trade['data']['e']
+        except Exception as e:
+            ws_error = True
+
+        if ws_error or trade['data']['e'] == 'error':
+            twm_start = False
+            tentative = 0
+            while not twm_start or tentative < 20:
+                try:
+                    twm.stop()
+                    twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
+                    twm.start()
+                    twm.start_multiplex_socket(callback=check_price, streams=streams)
+                    twm.join()
+                    twm_start = True
+                except Exception as e:
+                    time.sleep(2)
+                    tentative += 1
+                    twm_start = False
+                    logging.critical(e, exc_info=True)
+            if tentative >= 20:
+                # chiude l'ordine
+                current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                order = client.order_market_sell(symbol=symbol, quantity=round(exec_qty, quote_precision))
+                logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                exit("ERROR WS AUTO SELL")
+
         else:
             try:
+                # calcolo del gain e valuta se uscire
                 act_price = float(trade['data']['p'])
                 out = False
                 if act_price >= take_profit:
@@ -176,37 +206,54 @@ def orderbook(args):
                     gain = stop_loss - price
 
                 if out:
-                    twm.stop()
-                    current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                    order = client.order_market_sell(
-                        symbol=symbol,
-                        quantity=round(exec_qty, quote_precision))
-                    logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
-                    print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                    try:
+                        # setta l'ordine di vendita
+                        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                        order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+                        logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                        print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
 
-                    base_price = 1
-
-                    usdt_gain = gain * exec_qty
-                    current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                    log_path = cwd + "/csv/" + strategy + ".csv"
-                    createLogHeaders(log_path)
-                    file_currency = open(log_path, 'a')
-                    file_currency.write(
-                        "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain))
-                    file_currency.close()
-                    positions.remove(timeframe + "_" + symbol)
+                        # calcoli per file csv
+                        base_price = 1
+                        usdt_gain = gain * exec_qty
+                        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                        log_path = cwd + "/csv/" + strategy + ".csv"
+                        createLogHeaders(log_path)
+                        file_currency = open(log_path, 'a')
+                        file_currency.write(
+                            "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain))
+                        file_currency.close()
+                        positions.remove(timeframe + "_" + symbol)
+                        twm.stop()
+                        exit()
+                    except Exception as e:
+                        logging.critical(e, exc_info=True)
 
             except Exception as e:
                 logging.critical(symbol)
                 logging.critical(e, exc_info=True)
 
     streams = [str(symbol).lower() + '@trade']
-    try:
-        twm.start_multiplex_socket(callback=check_price, streams=streams)
-        twm.join()
-    except Exception as e:
-        logging.critical(e, exc_info=True)
-
+    twm_start = False
+    tentative = 0
+    while not twm_start or tentative < 20:
+        try:
+            twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
+            twm.start()
+            twm.start_multiplex_socket(callback=check_price, streams=streams)
+            twm.join()
+            twm_start = True
+        except Exception as e:
+            time.sleep(2)
+            tentative += 1
+            twm_start = False
+            logging.critical(e, exc_info=True)
+    if tentative >= 20:
+        # chiude l'ordine
+        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+        order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+        logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+        print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
 
 
 def check_coin(args):
@@ -221,9 +268,7 @@ def check_coin(args):
         if timeframe + "_" + symbol in positions:
             return True
 
-        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-        # print("%s - Get tick %s timeframe %s" % (str(current_time), symbol, timeframe))
-        # bars = client.get_historical_klines('BTCUSDT', '4h', timestamp, limit=50)
+        # recupera le candele
         response = requests.get(
             url="https://api.binance.com/api/v3/klines",
             params={
@@ -237,29 +282,22 @@ def check_coin(args):
         )
         bars = json.loads(response.content)
         try:
-            df = pd.DataFrame(bars,
-                              columns=['date', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_volume',
-                                       'n_trades', 'taker_buy_quote', 'taker_buy_asset', 'ignore'])
+            df = pd.DataFrame(bars,columns=['date', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_volume', 'n_trades', 'taker_buy_quote', 'taker_buy_asset', 'ignore'])
             df[['open', 'high', 'low', 'close']] = df[['open', 'high', 'low', 'close']].apply(pd.to_numeric)
             df.set_index('date', inplace=True)
-
             df.ta.ema(close='close', length=4, append=True)
             df.ta.ema(close='close', length=9, append=True)
             df.ta.ema(close='close', length=40, append=True)
             df.ta.ema(close='low', length=40, append=True, suffix='low')
             df.ta.ema(close='high', length=40, append=True, suffix='high')
-            df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=4,
-                      suffix="OHLC4", append=True)
-            df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=9,
-                      suffix="OHLC4", append=True)
-            df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=40,
-                      suffix="OHLC4", append=True)
+            df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=4, suffix="OHLC4", append=True)
+            df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=9, suffix="OHLC4", append=True)
+            df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=40, suffix="OHLC4", append=True)
         except Exception as e:
             logging.critical(symbol + "not enough candles")
             return True
 
         check_ticks = df[-2:-1]
-
         c_t = 0
         c_l = 0
         c_ct = 0
@@ -276,19 +314,11 @@ def check_coin(args):
             if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']:
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
-
                 price = getCurrentCoinPrice(symbol)
-
                 current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
-
                 perc_price = (check_tick['close'] - check_tick['open']) * 100 / price
 
-                if price < take_profit and price > stop_loss and perc_price >= 0.9 and (
-                        (c_t == 8 and c_l == 2 and c_ct == 0) or (
-                        c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (
-                                c_t == 3 and c_l == 7 and c_ct == 0) or (
-                                c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
-
+                if price < take_profit and price > stop_loss and perc_price >= 0.9 and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
                     multiplier = 1
                     args = {
                         "symbol": symbol,
@@ -308,34 +338,29 @@ def check_coin(args):
                         "quote_precision": quote_precision,
                         "min_qty": min_qty
                     }
-
                     positions.append(timeframe + "_" + symbol)
-                    #apre una posizione
                     print("Apro posizione " + symbol + " TF " + timeframe)
+                    # richiama orderbok per gestire la posizione
                     orderbook(args)
 
     except Exception as e:
         logging.critical(e, exc_info=True)
 
-
 def main():
+    logging.info('Start main process')
     try:
         response = requests.get(
             url="https://api.binance.com/api/v3/exchangeInfo",
-            params={
-            },
-            headers={
-                "Content-Type": "application/json",
-            },
+            params={},
+            headers={"Content-Type": "application/json"}
         )
         coins = json.loads(response.content)
-        first_start = False
         while True:
             c = 0
             curr_time = int(time.time())
             for timeframe in timeframes:
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                if curr_time % timeframeToSeconds(timeframe) == 0 or first_start:
+                if curr_time % timeframeToSeconds(timeframe) == 0:
                     print(str(current_time) + " - Start TF: " + timeframe)
                     time.sleep(10)
                     for symbol in coins['symbols']:
@@ -348,23 +373,15 @@ def main():
                                 minQty = filt['minNotional']
                         if minQty2 > minQty:
                             minQty = minQty2
-                        # assets = ('USDT')
                         if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT"):
-
-
-
-                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe,
-                                   "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty
-                                   }
+                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty}
                             p = Process(target=check_coin, args=(arg,))
                             p.start()
                             workers.append(p)
                             c = c + 2
                             if c % 1100 == 0:
                                 time.sleep(60)
-            first_start = False
             time.sleep(1)
-
 
     except KeyboardInterrupt:
         print("control-c")
@@ -374,10 +391,10 @@ def main():
                 p.join()
             except Exception as e:
                 pass
+
     except Exception as e:
         logging.critical(e, exc_info=True)
 
 
 if __name__ == "__main__":
-    logging.info('Start main process')
     main()
