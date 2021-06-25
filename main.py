@@ -156,9 +156,11 @@ def orderbook(args):
         if not config['demo']:
             order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
             exec_qty = float(order['executedQty'])
+            positions.append(timeframe + "_" + symbol)
         else:
             order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
             exec_qty = float(order['executedQty'])
+            positions.append(timeframe + "_" + symbol)
 
         logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
@@ -200,6 +202,7 @@ def orderbook(args):
                     order = client.order_market_sell(symbol=symbol, quantity=round(exec_qty, quote_precision))
                     logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
                     print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                positions.remove(timeframe + "_" + symbol)
                 exit("ERROR WS AUTO SELL")
 
         else:
@@ -223,6 +226,7 @@ def orderbook(args):
                         else:
                             order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
 
+                        positions.remove(timeframe + "_" + symbol)
                         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
                         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
 
@@ -236,7 +240,6 @@ def orderbook(args):
                         file_currency.write(
                             "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain, str(config['demo'])))
                         file_currency.close()
-                        positions.remove(timeframe + "_" + symbol)
                         twm.stop()
                         exit()
                     except Exception as e:
@@ -263,6 +266,8 @@ def orderbook(args):
         if not config['demo']:
             current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
             order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+
+        positions.remove(timeframe + "_" + symbol)
         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
 
@@ -348,7 +353,6 @@ def check_coin(args):
                         "quote_precision": quote_precision,
                         "min_qty": min_qty
                     }
-                    positions.append(timeframe + "_" + symbol)
                     print("Apro posizione " + symbol + " TF " + timeframe)
                     # richiama orderbok per gestire la posizione
                     orderbook(args)
