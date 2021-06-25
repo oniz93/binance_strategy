@@ -15,7 +15,10 @@ import time
 from binance import ThreadedWebsocketManager
 import logging
 import math
+import resource
 
+# resolt error too many files open
+resource.setrlimit(resource.RLIMIT_NOFILE, (999999, 999999))
 logging.basicConfig(filename='logs/error_new.log', level=logging.INFO)
 
 # crea il file con l'header
@@ -151,15 +154,15 @@ def orderbook(args):
         if buy_qty > max_buy_qty:
             buy_qty = max_buy_qty
 
-        logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
-        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
+        logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
+        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
         if not config['demo']:
             order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
             exec_qty = float(order['executedQty'])
             positions.append(timeframe + "_" + symbol)
         else:
             order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
-            exec_qty = float(order['executedQty'])
+            exec_qty = ""
             positions.append(timeframe + "_" + symbol)
 
         logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
