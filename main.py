@@ -110,6 +110,9 @@ def getCurrentCoinPrice(symbol):
 # crea l'ordine e monitora il prezzo per vendere
 def orderbook(args):
     try:
+        # twm process variable
+        twm = ThreadedWebsocketManager()
+
         # recupero di tutti i parametri
         start_datetime = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
         api_key = config['binance_key']
@@ -162,6 +165,7 @@ def orderbook(args):
     except Exception as e:
         logging.critical(e, exc_info=True)
 
+    # callback ws
     def check_price(trade):
         ws_error = False
         try:
@@ -236,15 +240,12 @@ def orderbook(args):
                 logging.critical(symbol)
                 logging.critical(e, exc_info=True)
 
-    streams = [str(symbol).lower() + '@trade']
+
     twm_start = False
     tentative = 0
     while not twm_start or tentative < 20:
         try:
-            twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
-            twm.start()
-            twm.start_multiplex_socket(callback=check_price, streams=streams)
-            twm.join()
+            twm.start_trade_socket(callback=check_price, symbol=symbol)
             twm_start = True
         except Exception as e:
             time.sleep(2)
@@ -257,7 +258,6 @@ def orderbook(args):
         order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
-
 
 def check_coin(args):
     try:

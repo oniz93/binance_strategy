@@ -171,16 +171,12 @@ def check_coin(args):
                 workers.append(p)
 
 if __name__ == "__main__":
-   client = Client(api_key = config['binance_key'], api_secret = config['binance_secret'])
-   balance = client.get_asset_balance(asset='USDT')
-   symbol = 'BUSDUSDT'
-   quote_precision = 8
-   buy_qty = 11
-   stop_loss = 0.9
-   exec_qty = round(11,4)
-   output = client.create_order(symbol=symbol, type='STOP_LOSS', quantity=exec_qty, side="sell", stopPrice=stop_loss)
-   print(output)
-   take_profit = 1.1
-   output = client.create_order(symbol=symbol, type='TAKE_PROFIT', quantity=exec_qty, side="sell", stopPrice=take_profit)
-
-   print(output)
+    symbol = 'BNBBTC'
+    twm = ThreadedWebsocketManager()
+    twm.start()
+    def handle_socket_message(msg):
+        print(msg)
+    twm.start_trade_socket(callback=handle_socket_message, symbol=symbol)
+    time.sleep(10)
+    twm.stop()
+    print("STOP")
