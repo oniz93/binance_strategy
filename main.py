@@ -174,7 +174,10 @@ def orderbook(args):
             tentative = 0
             while not twm_start or tentative < 20:
                 try:
-                    twm.stop()
+                    try:
+                        twm.stop()
+                    except Exception as e:
+                        pass
                     twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
                     twm.start()
                     twm.start_multiplex_socket(callback=check_price, streams=streams)
