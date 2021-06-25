@@ -193,6 +193,7 @@ def orderbook(args):
                     twm.start()
                     twm.start_trade_socket(callback=check_price, symbol=symbol)
                     twm_start = True
+                    print("START WS " + timeframe + " - " + symbol)
                 except Exception as e:
                     time.sleep(2)
                     tentative += 1
@@ -363,8 +364,25 @@ def check_coin(args):
     except Exception as e:
         logging.critical(e, exc_info=True)
 
+# avvia i watcher per ogni mercato
+def check_markets(markets):
+    c = 0
+    for market in markets:
+        p = Process(target=check_coin, args=(market,))
+        p.start()
+        workers.append(p)
+        c += 2
+        if c % 1100 == 0:
+            print("SLEEP CHECK MARKETS")
+            time.sleep(60)
+        if c >= 14000:
+            print("IGNORE MARKETS")
+            return
+    print("CHECK ALL MARKETS")
+
 def main():
-    logging.info('Start main process')
+    print("START MAIN PROCESS")
+    logging.info('START MAIN PROCESS')
     try:
         response = requests.get(
             url="https://api.binance.com/api/v3/exchangeInfo",
@@ -375,33 +393,39 @@ def main():
         while True:
             c = 0
             curr_time = int(time.time())
+            candidate_markets = list()
+            candidate_timeframes = list()
             for timeframe in timeframes:
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                 if curr_time % timeframeToSeconds(timeframe) == 0:
-                    print(str(current_time) + " - Start TF: " + timeframe)
-                    time.sleep(10)
-                    for symbol in coins['symbols']:
-                        assets = config['assets']
-                        for filt in symbol['filters']:
-                            if filt['filterType'] == 'LOT_SIZE':
-                                precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
-                                minQty2 = filt['minQty']
-                            if filt['filterType'] == 'MIN_NOTIONAL':
-                                minQty = filt['minNotional']
-                        if minQty2 > minQty:
-                            minQty = minQty2
-                        if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT"):
-                            arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty}
-                            p = Process(target=check_coin, args=(arg,))
-                            p.start()
-                            workers.append(p)
-                            c = c + 2
-                            if c % 1100 == 0:
-                                time.sleep(60)
+                    candidate_timeframes.append(timeframe)
+
+            for timeframe in candidate_timeframes:
+                print(str(current_time) + " - START TF: " + timeframe)
+                time.sleep(10)
+                for symbol in coins['symbols']:
+                    assets = config['assets']
+                    for filt in symbol['filters']:
+                        if filt['filterType'] == 'LOT_SIZE':
+                            precision = int(round(-math.log(float(filt['stepSize']), 10), 0))
+                            minQty2 = filt['minQty']
+                        if filt['filterType'] == 'MIN_NOTIONAL':
+                            minQty = filt['minNotional']
+                    if minQty2 > minQty:
+                        minQty = minQty2
+                    if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT"):
+                        arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty}
+                        candidate_markets.append(arg)
+
+            # avvia un processo che avvia i processi!!
+            if len(candidate_markets) > 0:
+                p = Process(target=check_markets, args=(candidate_markets,))
+                p.start()
+                workers.append(p)
             time.sleep(1)
 
     except KeyboardInterrupt:
-        print("control-c")
+        print("STOP PROCESS")
         for p in workers:
             try:
                 p.terminate()
