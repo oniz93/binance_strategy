@@ -23,7 +23,7 @@ def createLogHeaders(path):
     if not os.path.exists(path):
         file_currency = open(path, 'a')
         file_currency.write(
-            '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low", "QT", "USD Gain"\n')
+            '"Strategy","Current Time","Start Time","Timeframe","Symbol","Price","Trend","Lateral","Controtrend","Stop loss","Take profit","Exit","Gain","Base price","Open","Close","High","Low", "QT", "USD Gain", "Demo"\n')
         file_currency.close()
 
 
@@ -110,9 +110,6 @@ def getCurrentCoinPrice(symbol):
 # crea l'ordine e monitora il prezzo per vendere
 def orderbook(args):
     try:
-        # twm process variable
-        twm = ThreadedWebsocketManager()
-
         # recupero di tutti i parametri
         start_datetime = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
         api_key = config['binance_key']
@@ -146,7 +143,7 @@ def orderbook(args):
         if qty_asset < min_qty:
             print("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
             logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
-            return
+            exit("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
 
         # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
         max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
@@ -156,36 +153,40 @@ def orderbook(args):
 
         logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
         print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + "value " + str(buy_qty * price))
+        if not config['demo']:
+            order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
+            exec_qty = float(order['executedQty'])
+        else:
+            order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
+            exec_qty = float(order['executedQty'])
 
-        order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
-        exec_qty = float(order['executedQty'])
         logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
         print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
 
     except Exception as e:
         logging.critical(e, exc_info=True)
+        return
+
+    # twm process variable
+    twm = ThreadedWebsocketManager()
+    time_start_ws = int(time.time())
+    ws_error = False
 
     # callback ws
     def check_price(trade):
-        ws_error = False
         try:
-            ws_error = trade['data']['e']
+            ws_error = trade['e']
         except Exception as e:
             ws_error = True
 
-        if ws_error or trade['data']['e'] == 'error':
+        if time_start_ws % (60 * 60 * 2) or ws_error or trade['e'] == 'error':
             twm_start = False
             tentative = 0
             while not twm_start or tentative < 20:
                 try:
-                    try:
-                        twm.stop()
-                    except Exception as e:
-                        pass
-                    twm = ThreadedWebsocketManager(api_key=api_key, api_secret=api_secret)
+                    twm.stop()
                     twm.start()
-                    twm.start_multiplex_socket(callback=check_price, streams=streams)
-                    twm.join()
+                    twm.start_trade_socket(callback=check_price, symbol=symbol)
                     twm_start = True
                 except Exception as e:
                     time.sleep(2)
@@ -194,16 +195,17 @@ def orderbook(args):
                     logging.critical(e, exc_info=True)
             if tentative >= 20:
                 # chiude l'ordine
-                current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                order = client.order_market_sell(symbol=symbol, quantity=round(exec_qty, quote_precision))
-                logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
-                print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                if not config['demo']:
+                    current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                    order = client.order_market_sell(symbol=symbol, quantity=round(exec_qty, quote_precision))
+                    logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                    print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
                 exit("ERROR WS AUTO SELL")
 
         else:
             try:
                 # calcolo del gain e valuta se uscire
-                act_price = float(trade['data']['p'])
+                act_price = float(trade['p'])
                 out = False
                 if act_price >= take_profit:
                     out = 'tp'
@@ -214,9 +216,13 @@ def orderbook(args):
 
                 if out:
                     try:
-                        # setta l'ordine di vendita
-                        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                        order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+                        if not config['demo']:
+                            # setta l'ordine di vendita
+                            current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+                            order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+                        else:
+                            order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
+
                         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
                         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
 
@@ -228,7 +234,7 @@ def orderbook(args):
                         createLogHeaders(log_path)
                         file_currency = open(log_path, 'a')
                         file_currency.write(
-                            "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain))
+                            "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain, str(config['demo'])))
                         file_currency.close()
                         positions.remove(timeframe + "_" + symbol)
                         twm.stop()
@@ -240,11 +246,11 @@ def orderbook(args):
                 logging.critical(symbol)
                 logging.critical(e, exc_info=True)
 
-
     twm_start = False
     tentative = 0
     while not twm_start or tentative < 20:
         try:
+
             twm.start_trade_socket(callback=check_price, symbol=symbol)
             twm_start = True
         except Exception as e:
@@ -254,8 +260,9 @@ def orderbook(args):
             logging.critical(e, exc_info=True)
     if tentative >= 20:
         # chiude l'ordine
-        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-        order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+        if not config['demo']:
+            current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
+            order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
 
