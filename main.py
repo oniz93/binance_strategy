@@ -162,7 +162,7 @@ def orderbook(args):
             exec_qty = float(order['executedQty'])
             positions.append(timeframe + "_" + symbol)
         else:
-            order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
+            #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
             exec_qty = buy_qty
             positions.append(timeframe + "_" + symbol)
 
@@ -184,9 +184,6 @@ def orderbook(args):
             ws_error = trade['e']
         except Exception as e:
             ws_error = 'error'
-
-        if time_start_ws % (20) == 0:
-            logging.info("WS: ANALISI SU MERCATO " + timeframe + " - " + symbol)
 
         if time_start_ws % (60 * 60 * 2) == 0 or ws_error == 'error' or trade['e'] == 'error':
             twm_start = False
@@ -226,14 +223,14 @@ def orderbook(args):
                     gain = stop_loss - price
 
                 if out:
+                    current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                     try:
                         if not config['demo']:
                             # setta l'ordine di vendita
-                            current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                             order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
                             executedQty = order['executedQty']
                         else:
-                            order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
+                            #order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
                             executedQty = exec_qty
 
                         positions.remove(timeframe + "_" + symbol)
@@ -317,14 +314,14 @@ def check_coin(args):
                 c_ct = c_ct + 1
 
         for index, check_tick in check_ticks.iterrows():
-            if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']:
+            if (check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']):
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
                 price = getCurrentCoinPrice(symbol)
                 current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
                 perc_price = (check_tick['close'] - check_tick['open']) * 100 / price
 
-                if price < take_profit and price > stop_loss and perc_price >= 0.9 and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
+                if (price < take_profit and price > stop_loss and perc_price >= 0.9 and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23'):
                     multiplier = 1
                     args = {
                         "symbol": symbol,
