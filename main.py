@@ -19,7 +19,7 @@ import resource
 from position import Position
 
 # resolt error too many files open
-resource.setrlimit(resource.RLIMIT_NOFILE, (9999999, 9999999))
+resource.setrlimit(resource.RLIMIT_NOFILE, (999999, 999999))
 logging.basicConfig(filename='logs/error_new.log', level=logging.INFO)
 
 # crea il file con l'header
@@ -184,6 +184,9 @@ def orderbook(args):
             ws_error = trade['e']
         except Exception as e:
             ws_error = 'error'
+
+        if time_start_ws % (20) == 0:
+            logging.info("WS: ANALISI SU MERCATO " + timeframe + " - " + symbol)
 
         if time_start_ws % (60 * 60 * 2) == 0 or ws_error == 'error' or trade['e'] == 'error':
             twm_start = False
