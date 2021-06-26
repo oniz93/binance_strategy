@@ -183,9 +183,9 @@ def orderbook(args):
         try:
             ws_error = trade['e']
         except Exception as e:
-            ws_error = True
+            ws_error = 'error'
 
-        if time_start_ws % (60 * 60 * 2) or ws_error or trade['e'] == 'error':
+        if time_start_ws % (60 * 60 * 2) == 0 or ws_error == 'error' or trade['e'] == 'error':
             twm_start = False
             tentative = 0
             while not twm_start or tentative < 20:
@@ -256,30 +256,8 @@ def orderbook(args):
                 logging.critical(symbol)
                 logging.critical(e, exc_info=True)
 
-    twm_start = False
-    tentative = 0
-    while not twm_start or tentative < 20:
-        try:
-
-            twm.start_trade_socket(callback=check_price, symbol=symbol)
-            twm_start = True
-        except Exception as e:
-            time.sleep(2)
-            tentative += 1
-            twm_start = False
-            logging.critical(e, exc_info=True)
-    if tentative >= 20:
-        # chiude l'ordine
-        if not config['demo']:
-            current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-            order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
-            executedQty = order['executedQty']
-        else:
-            executedQty = exec_qty
-
-        positions.remove(timeframe + "_" + symbol)
-        logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
-        print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
+    twm.start()
+    twm.start_trade_socket(callback=check_price, symbol=symbol)
 
 def check_coin(args):
     try:
@@ -378,7 +356,7 @@ def check_markets(markets):
         p.start()
         workers.append(p)
         c += 2
-        if c % 1100 == 0:
+        if c % 1050 == 0:
             print("SLEEP CHECK MARKETS")
             time.sleep(60)
         if c >= 14000:
