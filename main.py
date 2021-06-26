@@ -16,6 +16,7 @@ from binance import ThreadedWebsocketManager
 import logging
 import math
 import resource
+from position import Position
 
 # resolt error too many files open
 resource.setrlimit(resource.RLIMIT_NOFILE, (999999, 999999))
@@ -107,7 +108,7 @@ def getCurrentCoinPrice(symbol):
         except Exception as e:
             logging.critical(symbol)
             logging.critical(e, exc_info=True)
-    logging.critical("No trades found for symbol %s " % (symbol,))
+    #logging.critical("No trades found for symbol %s " % (symbol,))
     exit("KILL Process - No trades found for symbol %s " % (symbol,))
 
 # crea l'ordine e monitora il prezzo per vendere
@@ -162,7 +163,7 @@ def orderbook(args):
             positions.append(timeframe + "_" + symbol)
         else:
             order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
-            exec_qty = ""
+            exec_qty = buy_qty
             positions.append(timeframe + "_" + symbol)
 
         logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
@@ -193,7 +194,7 @@ def orderbook(args):
                     twm.start()
                     twm.start_trade_socket(callback=check_price, symbol=symbol)
                     twm_start = True
-                    print("START WS " + timeframe + " - " + symbol)
+                    logging.info("START WS " + timeframe + " - " + symbol)
                 except Exception as e:
                     time.sleep(2)
                     tentative += 1
@@ -227,12 +228,14 @@ def orderbook(args):
                             # setta l'ordine di vendita
                             current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                             order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+                            executedQty = order['executedQty']
                         else:
                             order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
+                            executedQty = exec_qty
 
                         positions.remove(timeframe + "_" + symbol)
-                        logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
-                        print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+                        logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
+                        print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
 
                         # calcoli per file csv
                         base_price = 1
@@ -270,10 +273,13 @@ def orderbook(args):
         if not config['demo']:
             current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
             order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
+            executedQty = order['executedQty']
+        else:
+            executedQty = exec_qty
 
         positions.remove(timeframe + "_" + symbol)
-        logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
-        print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
+        logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
+        print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
 
 def check_coin(args):
     try:
@@ -313,7 +319,7 @@ def check_coin(args):
             df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=9, suffix="OHLC4", append=True)
             df.ta.ema(close=df.ta.ohlc4(ta.ohlc4(df["open"], df["high"], df["low"], df["close"])), length=40, suffix="OHLC4", append=True)
         except Exception as e:
-            logging.critical(symbol + "not enough candles")
+            #logging.critical(symbol + "not enough candles")
             return True
 
         check_ticks = df[-2:-1]
@@ -330,14 +336,14 @@ def check_coin(args):
                 c_ct = c_ct + 1
 
         for index, check_tick in check_ticks.iterrows():
-            if check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']:
+            if True or (check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']):
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
                 price = getCurrentCoinPrice(symbol)
                 current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
                 perc_price = (check_tick['close'] - check_tick['open']) * 100 / price
 
-                if price < take_profit and price > stop_loss and perc_price >= 0.9 and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23':
+                if True or (price < take_profit and price > stop_loss and perc_price >= 0.9 and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23'):
                     multiplier = 1
                     args = {
                         "symbol": symbol,
@@ -402,7 +408,6 @@ def main():
 
             for timeframe in candidate_timeframes:
                 print(str(current_time) + " - START TF: " + timeframe)
-                time.sleep(10)
                 for symbol in coins['symbols']:
                     assets = config['assets']
                     for filt in symbol['filters']:
