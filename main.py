@@ -19,7 +19,7 @@ import resource
 from position import Position
 
 # resolt error too many files open
-resource.setrlimit(resource.RLIMIT_NOFILE, (999999, 999999))
+resource.setrlimit(resource.RLIMIT_NOFILE, (9999999, 9999999))
 logging.basicConfig(filename='logs/error_new.log', level=logging.INFO)
 
 # crea il file con l'header
@@ -234,13 +234,13 @@ def orderbook(args):
                             executedQty = exec_qty
 
                         positions.remove(timeframe + "_" + symbol)
+                        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
                         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
 
                         # calcoli per file csv
                         base_price = 1
                         usdt_gain = gain * exec_qty
-                        current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                         log_path = cwd + "/csv/" + strategy + ".csv"
                         createLogHeaders(log_path)
                         file_currency = open(log_path, 'a')
