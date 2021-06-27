@@ -221,10 +221,8 @@ def orderbook(args):
                 out = False
                 if act_price >= take_profit:
                     out = 'tp'
-                    gain = take_profit - price
                 elif act_price <= stop_loss:
                     out = 'sl'
-                    gain = stop_loss - price
 
                 if out:
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
@@ -235,8 +233,10 @@ def orderbook(args):
                             executedQty = order['executedQty']
                             if out == 'tp':
                                 take_profit = float(order['fills']['price'])
+                                gain = take_profit - price
                             else:
                                 stop_loss = float(order['fills']['price'])
+                                gain = stop_loss - price
                         else:
                             #order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
                             executedQty = exec_qty
