@@ -163,7 +163,7 @@ def orderbook(args):
         if not config['demo']:
             order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
             exec_qty = float(order['executedQty'])
-            price = float(order['fills']['price'])
+            price = float(order['fills'][0]['price'])
             positions.append(timeframe + "_" + symbol)
         else:
             #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
@@ -184,6 +184,8 @@ def orderbook(args):
 
     # callback ws
     def check_price(trade):
+        global take_profit
+        global stop_loss
         try:
             ws_error = trade['e']
         except Exception as e:
@@ -232,10 +234,10 @@ def orderbook(args):
                             order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
                             executedQty = order['executedQty']
                             if out == 'tp':
-                                take_profit = float(order['fills']['price'])
+                                take_profit = float(order['fills'][0]['price'])
                                 gain = take_profit - price
                             else:
-                                stop_loss = float(order['fills']['price'])
+                                stop_loss = float(order['fills'][0]['price'])
                                 gain = stop_loss - price
                         else:
                             #order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
