@@ -106,8 +106,9 @@ def getCurrentCoinPrice(symbol):
                 return base_price
 
         except Exception as e:
-            logging.critical(symbol)
-            logging.critical(e, exc_info=True)
+            pass
+            #logging.critical(symbol)
+            #logging.critical(e, exc_info=True)
     #logging.critical("No trades found for symbol %s " % (symbol,))
     exit("KILL Process - No trades found for symbol %s " % (symbol,))
 
@@ -150,8 +151,10 @@ def orderbook(args):
             exit("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
 
         # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
-        max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
-        buy_qty = min_qty + ( ((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price) * 10)
+        #max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
+        #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price) * 10)
+        max_buy_qty = 20
+        buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
         if buy_qty > max_buy_qty:
             buy_qty = max_buy_qty
 
@@ -396,7 +399,7 @@ def main():
                             minQty = filt['minNotional']
                     if minQty2 > minQty:
                         minQty = minQty2
-                    if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT") and 'SPOT' in symbol['permissions']:
+                    if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT", "CELOUSDT", "BAKEUSDT", "BAKEBUSD", "RLCBUSD", "BIFIBUSD", "SANDBUSD", "BELBUSD", "IOTABUSD", "AIONUSDT", "DGBUSDT", "SLPBUSD") and 'SPOT' in symbol['permissions']:
                         arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty}
                         candidate_markets.append(arg)
 
