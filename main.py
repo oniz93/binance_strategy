@@ -85,27 +85,17 @@ def getCurrentCoinPrice(symbol):
         c += 1
         try:
             response = requests.get(
-                url="https://api.binance.com/api/v3/depth",
-                params={
-                    "symbol": symbol,
-                    "limit": limit
-                },
+                url="https://api.binance.com/api/v3/ticker/price?symbol="+symbol,
                 headers={
                     "Content-Type": "application/json",
                 },
             )
-            base_price_ask_bid = json.loads(response.content)
-
-            if len(base_price_ask_bid['bids']) == 0 or len(base_price_ask_bid['asks']) == 0:
-                limit *= 2
-                time.sleep(1)
-            else:
-                base_price_bid = float(base_price_ask_bid['bids'][0][0])
-                base_price_ask = float(base_price_ask_bid['asks'][0][0])
-                base_price_avg = (base_price_bid + base_price_ask) / 2
-                base_price = base_price_avg
+            response = json.loads(response.content)
+            if 'price' in response.keys():
                 searchPrice = False
-                return base_price
+                return response['price']
+            else:
+                time.sleep(0.5)
 
         except Exception as e:
             pass
