@@ -73,6 +73,8 @@ configfile.close()
 timeframes = config['timeframes']
 workers = list()
 positions = list()
+take_profit = 0
+stop_loss = 0
 
 # recupera la media tra ask e bid di una moneta
 def getCurrentCoinPrice(symbol):
@@ -115,6 +117,8 @@ def getCurrentCoinPrice(symbol):
 # crea l'ordine e monitora il prezzo per vendere
 def orderbook(args):
     try:
+        global take_profit
+        global stop_loss
         # recupero di tutti i parametri
         start_datetime = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
         api_key = config['binance_key']
