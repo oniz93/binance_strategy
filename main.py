@@ -160,6 +160,7 @@ def orderbook(args):
         if not config['demo']:
             order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
             exec_qty = float(order['executedQty'])
+            price = float(order['fills']['price'])
             positions.append(timeframe + "_" + symbol)
         else:
             #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
@@ -229,6 +230,10 @@ def orderbook(args):
                             # setta l'ordine di vendita
                             order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
                             executedQty = order['executedQty']
+                            if out == 'tp':
+                                take_profit = float(order['fills']['price'])
+                            else:
+                                stop_loss = float(order['fills']['price'])
                         else:
                             #order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
                             executedQty = exec_qty
