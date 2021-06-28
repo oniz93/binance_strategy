@@ -145,10 +145,9 @@ def orderbook(args):
             exit("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
 
         # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
-        #max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
-        #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) * 1.2 / price) * 10)
-        max_buy_qty = 20
-        buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
+        max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
+        #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
+        buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) / price) * 10)
         if buy_qty > max_buy_qty:
             buy_qty = max_buy_qty
 
@@ -321,7 +320,7 @@ def check_coin(args):
             if (check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']):
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
-                price = getCurrentCoinPrice(symbol)
+                price = float(getCurrentCoinPrice(symbol))
                 current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
                 perc_price = (check_tick['close'] - check_tick['open']) * 100 / price
 
