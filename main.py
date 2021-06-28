@@ -133,11 +133,24 @@ def orderbook(args):
 
         logging.info("Found " + symbol + " tf " + timeframe)
         print("Found " + symbol + " tf " + timeframe)
-
-        if getCurrentCoinPrice(symbol) > take_profit:
+        current_price = getCurrentCoinPrice(symbol)
+        if current_price > take_profit:
             print("STOP " + symbol + " tf " + timeframe + ": price already too high")
             logging.info("STOP " + symbol + " tf " + timeframe + ": price already too high")
             exit("STOP " + symbol + " tf " + timeframe + ": price already too high")
+
+        delta = price / current_price * 10
+
+        if 90 <= delta or delta >= 110:
+            print("STOP " + symbol + " tf " + timeframe + ": price changed too much")
+            logging.info("STOP " + symbol + " tf " + timeframe + ": price changed too much")
+            exit("STOP " + symbol + " tf " + timeframe + ": price changed too much")
+
+        percent_tp = take_profit / current_price * 100
+        if percent_tp <= 101:
+            print("STOP " + symbol + " tf " + timeframe + ": not enough margin")
+            logging.info("STOP " + symbol + " tf " + timeframe + ": not enough margin")
+            exit("STOP " + symbol + " tf " + timeframe + ": not enough margin")
 
         client = Client(api_key=api_key, api_secret=api_secret)
         balance = client.get_asset_balance(asset=quote_asset)
