@@ -134,6 +134,11 @@ def orderbook(args):
         logging.info("Found " + symbol + " tf " + timeframe)
         print("Found " + symbol + " tf " + timeframe)
 
+        if getCurrentCoinPrice(symbol) > take_profit:
+            print("STOP " + symbol + " tf " + timeframe + ": price already too high")
+            logging.info("STOP " + symbol + " tf " + timeframe + ": price already too high")
+            exit("STOP " + symbol + " tf " + timeframe + ": price already too high")
+
         client = Client(api_key=api_key, api_secret=api_secret)
         balance = client.get_asset_balance(asset=quote_asset)
         qty_asset = float(balance['free'])
@@ -148,7 +153,7 @@ def orderbook(args):
         # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
         max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
         #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
-        buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((high_price - low_price) / price) * 10)
+        buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((close_price - open_price) / price) * 10)
         if buy_qty > max_buy_qty:
             buy_qty = max_buy_qty
 
