@@ -93,7 +93,7 @@ def getCurrentCoinPrice(symbol):
             response = json.loads(response.content)
             if 'price' in response.keys():
                 searchPrice = False
-                return response['price']
+                return float(response['price'])
             else:
                 time.sleep(0.5)
 
@@ -109,6 +109,7 @@ def orderbook(args):
     try:
         global take_profit
         global stop_loss
+        global positions
         # recupero di tutti i parametri
         start_datetime = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
         api_key = config['binance_key']
@@ -179,6 +180,7 @@ def orderbook(args):
     def check_price(trade):
         global take_profit
         global stop_loss
+        global positions
         try:
             ws_error = trade['e']
         except Exception as e:
@@ -235,6 +237,10 @@ def orderbook(args):
                         else:
                             #order = client.create_test_order(symbol=symbol,quantity=round(exec_qty, quote_precision), side="SELL", type="MARKET")
                             executedQty = exec_qty
+                            if out == 'tp':
+                                gain = take_profit - price
+                            else:
+                                gain = stop_loss - price
 
                         positions.remove(timeframe + "_" + symbol)
                         current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
@@ -320,7 +326,7 @@ def check_coin(args):
             if (check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']):
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
                 stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
-                price = float(getCurrentCoinPrice(symbol))
+                price = getCurrentCoinPrice(symbol)
                 current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
                 perc_price = (check_tick['close'] - check_tick['open']) * 100 / price
 
