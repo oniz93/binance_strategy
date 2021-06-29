@@ -217,6 +217,7 @@ def orderbook(args):
             if buy_qty > max_buy_cap:
                 buy_qty = max_buy_cap
 
+
             logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
             print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
             if not config['demo']:
@@ -438,7 +439,7 @@ def check_markets(markets):
         p.start()
         workers.append(p)
         c += 2
-        if c % 1050 == 0:
+        if c % 900 == 0:
             print("SLEEP CHECK MARKETS")
             time.sleep(60)
         if c >= 14000:
