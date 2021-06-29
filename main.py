@@ -78,6 +78,7 @@ positions = list()
 take_profit = 0
 stop_loss = 0
 positionDB = Position()
+positionDB.create_table()
 
 # recupera la media tra ask e bid di una moneta
 def getCurrentCoinPrice(symbol):
