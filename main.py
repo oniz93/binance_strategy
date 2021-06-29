@@ -1,6 +1,7 @@
 # import
 import binance
 import os
+import sys
 import ujson as json
 from binance import Client
 import pandas as pd
@@ -16,6 +17,7 @@ from binance import ThreadedWebsocketManager
 import logging
 import math
 import resource
+import psutil
 from position import Position
 
 # resolt error too many files open
@@ -75,6 +77,7 @@ workers = list()
 positions = list()
 take_profit = 0
 stop_loss = 0
+positionDB = Position()
 
 # recupera la media tra ask e bid di una moneta
 def getCurrentCoinPrice(symbol):
@@ -130,60 +133,76 @@ def orderbook(args):
         quote_asset = args['quote_asset']
         quote_precision = args['quote_precision']
         min_qty = float(args['min_qty'])
+        pid = False
+        exec_qty = False
+        if 'exec_qty' in args:
+            exec_qty = args['exec_qty']
+        if 'pid' in args:
+            pid = args['pid']
+
+        current_pid = os.getpid()
 
         logging.info("Found " + symbol + " tf " + timeframe)
         print("Found " + symbol + " tf " + timeframe)
-        current_price = getCurrentCoinPrice(symbol)
-        if current_price > take_profit:
-            print("STOP " + symbol + " tf " + timeframe + ": price already too high")
-            logging.info("STOP " + symbol + " tf " + timeframe + ": price already too high")
-            exit("STOP " + symbol + " tf " + timeframe + ": price already too high")
+        if exec_qty == False:
+            current_price = getCurrentCoinPrice(symbol)
+            if current_price > take_profit:
+                print("STOP " + symbol + " tf " + timeframe + ": price already too high")
+                logging.info("STOP " + symbol + " tf " + timeframe + ": price already too high")
+                exit("STOP " + symbol + " tf " + timeframe + ": price already too high")
 
-        delta = price / current_price * 10
+            delta = price / current_price * 10
 
-        if 90 <= delta or delta >= 110:
-            print("STOP " + symbol + " tf " + timeframe + ": price changed too much")
-            logging.info("STOP " + symbol + " tf " + timeframe + ": price changed too much")
-            exit("STOP " + symbol + " tf " + timeframe + ": price changed too much")
+            if 90 <= delta or delta >= 110:
+                print("STOP " + symbol + " tf " + timeframe + ": price changed too much")
+                logging.info("STOP " + symbol + " tf " + timeframe + ": price changed too much")
+                exit("STOP " + symbol + " tf " + timeframe + ": price changed too much")
 
-        percent_tp = take_profit / current_price * 100
-        if percent_tp <= 101:
-            print("STOP " + symbol + " tf " + timeframe + ": not enough margin")
-            logging.info("STOP " + symbol + " tf " + timeframe + ": not enough margin")
-            exit("STOP " + symbol + " tf " + timeframe + ": not enough margin")
+            percent_tp = take_profit / current_price * 100
+            if percent_tp <= 101:
+                print("STOP " + symbol + " tf " + timeframe + ": not enough margin")
+                logging.info("STOP " + symbol + " tf " + timeframe + ": not enough margin")
+                exit("STOP " + symbol + " tf " + timeframe + ": not enough margin")
 
-        client = Client(api_key=api_key, api_secret=api_secret)
-        balance = client.get_asset_balance(asset=quote_asset)
-        qty_asset = float(balance['free'])
-        logging.info("Quote asset: " + quote_asset + " Balance: " + str(qty_asset))
+            client = Client(api_key=api_key, api_secret=api_secret)
+            balance = client.get_asset_balance(asset=quote_asset)
+            qty_asset = float(balance['free'])
+            logging.info("Quote asset: " + quote_asset + " Balance: " + str(qty_asset))
 
-        # quando non ci sono abbastanza soldi per la quantità minima della coppia
-        if qty_asset < min_qty:
-            print("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
-            logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
-            exit("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
+            # quando non ci sono abbastanza soldi per la quantità minima della coppia
+            if qty_asset < min_qty:
+                print("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
+                logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
+                exit("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
 
-        # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
-        max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
-        #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
-        buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((close_price - open_price) / price) * 10)
-        if buy_qty > max_buy_qty:
-            buy_qty = max_buy_qty
+            # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
+            max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
+            #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
+            buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((close_price - open_price) / price) * 10)
+            if buy_qty > max_buy_qty:
+                buy_qty = max_buy_qty
 
-        logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
-        print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
-        if not config['demo']:
-            order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
-            exec_qty = float(order['executedQty'])
-            price = float(order['fills'][0]['price'])
-            positions.append(timeframe + "_" + symbol)
+            logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
+            print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
+            if not config['demo']:
+                order = client.order_market_buy(symbol=symbol, quoteOrderQty=round(buy_qty, quote_precision))
+                exec_qty = float(order['executedQty'])
+                price = float(order['fills'][0]['price'])
+                positions.append(timeframe + "_" + symbol)
+            else:
+                #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
+                exec_qty = buy_qty
+                positions.append(timeframe + "_" + symbol)
+            args['exec_qty'] = exec_qty
+            positionDB.open(order_detail=args, symbol=symbol, timeframe=timeframe, pid=current_pid)
+
+            logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
+            print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
         else:
-            #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
-            exec_qty = buy_qty
-            positions.append(timeframe + "_" + symbol)
+            logging.info(str(start_datetime) + " - RESTART " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
+            print(str(start_datetime) + " - RESTART " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
+            positionDB.updatePid(str(pid), str(current_pid))
 
-        logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
-        print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(buy_qty) + " Exec QTY: " + str(exec_qty))
 
     except Exception as e:
         logging.critical(e, exc_info=True)
@@ -227,6 +246,7 @@ def orderbook(args):
                     logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
                     print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(order['executedQty']))
                 positions.remove(timeframe + "_" + symbol)
+                positionDB.closePid(current_pid)
                 exit("ERROR WS AUTO SELL")
 
         else:
@@ -264,7 +284,7 @@ def orderbook(args):
                         current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
                         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
-
+                        positionDB.closePid(current_pid)
                         # calcoli per file csv
                         base_price = 1
                         usdt_gain = gain * exec_qty
@@ -401,6 +421,7 @@ def main():
             headers={"Content-Type": "application/json"}
         )
         coins = json.loads(response.content)
+        forceStart = True
         while True:
             c = 0
             curr_time = int(time.time())
@@ -408,7 +429,8 @@ def main():
             candidate_timeframes = list()
             for timeframe in timeframes:
                 current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
-                if curr_time % timeframeToSeconds(timeframe) == 0:
+                if curr_time % timeframeToSeconds(timeframe) == 0 or forceStart:
+                    print(timeframe)
                     candidate_timeframes.append(timeframe)
 
             for timeframe in candidate_timeframes:
@@ -426,6 +448,7 @@ def main():
                     if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT", "CELOUSDT", "BAKEUSDT", "BAKEBUSD", "RLCBUSD", "BIFIBUSD", "SANDBUSD", "BELBUSD", "IOTABUSD", "AIONUSDT", "DGBUSDT", "SLPBUSD") and 'SPOT' in symbol['permissions']:
                         arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty}
                         candidate_markets.append(arg)
+            forceStart = False
 
             # avvia un processo che avvia i processi!!
             if len(candidate_markets) > 0:
@@ -446,6 +469,22 @@ def main():
     except Exception as e:
         logging.critical(e, exc_info=True)
 
+def check_pid_and_restart():
+    while True:
+        pids = psutil.pids()
+        DB = Position()
+        orders = DB.getAllPending()
+        for order in orders:
+            if int(order['PID']) not in pids:
+                args = json.loads(order['orderDetail'])
+                args['pid'] = order['PID']
+                p = Process(target=orderbook, args=(args,))
+                p.start()
+        time.sleep(30)
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'watcher':
+            check_pid_and_restart()
+    else:
+        main()
