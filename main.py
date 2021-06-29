@@ -329,7 +329,7 @@ def orderbook(args):
                         createLogHeaders(log_path)
                         file_currency = open(log_path, 'a')
                         file_currency.write(
-                            "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, buy_qty, usdt_gain, str(config['demo'])))
+                            "{0},{1},{2},{3},{4},{5:.8f},{6},{7},{8},{9:.8f},{10:.8f},{11},{12:.8f},{13:.8f},{14:.8f},{15:.8f},{16:.8f},{17:.8f},{18:.8f},{19:.8f}\n".format(strategy, str(current_time), str(start_datetime), timeframe, symbol, price, str(c_t), str(c_l), str(c_ct), stop_loss, take_profit, out, gain, base_price, open_price, close_price, high_price, low_price, exec_qty, usdt_gain, str(config['demo'])))
                         file_currency.close()
                         twm.stop()
                         exit()
