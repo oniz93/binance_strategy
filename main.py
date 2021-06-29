@@ -315,8 +315,8 @@ def orderbook(args):
                                 gain = take_profit - price
                             else:
                                 gain = stop_loss - price
-
-                        positions.remove(timeframe + "_" + symbol)
+                        if timeframe + "_" + symbol in positions:
+                            positions.remove(timeframe + "_" + symbol)
                         current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                         logging.info(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
                         print(str(current_time) + " - SELL " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(executedQty))
