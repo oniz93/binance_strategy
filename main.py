@@ -300,6 +300,9 @@ def orderbook(args):
                 if out:
                     current_time = (datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S'))
                     try:
+                        logging.info(str(current_time) + " - SELLING " + symbol + " - QTY: " + str(exec_qty))
+                        print(str(current_time) + " - SELLING " + symbol + " - QTY: " + str(exec_qty))
+
                         if not config['demo']:
                             # setta l'ordine di vendita
                             order = client.order_market_sell(symbol=symbol,quantity=round(exec_qty, quote_precision))
