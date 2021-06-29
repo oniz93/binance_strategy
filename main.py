@@ -108,6 +108,33 @@ def getCurrentCoinPrice(symbol):
     #logging.critical("No trades found for symbol %s " % (symbol,))
     exit("KILL Process - No trades found for symbol %s " % (symbol,))
 
+def getCoinVolume(symbol):
+    searchPrice = True
+    limit = 10
+    c = 0
+    while searchPrice and c < 6:
+        c += 1
+        try:
+            response = requests.get(
+                url="https://api.binance.com/api/v3/ticker/24hr?symbol="+symbol,
+                headers={
+                    "Content-Type": "application/json",
+                },
+            )
+            response = json.loads(response.content)
+            if 'quoteVolume' in response.keys():
+                searchPrice = False
+                return float(response['quoteVolume'])
+            else:
+                time.sleep(0.5)
+
+        except Exception as e:
+            pass
+            #logging.critical(symbol)
+            #logging.critical(e, exc_info=True)
+    #logging.critical("No trades found for symbol %s " % (symbol,))
+    exit("KILL Process - No volume found for symbol %s " % (symbol,))
+
 # crea l'ordine e monitora il prezzo per vendere
 def orderbook(args):
     try:
@@ -165,6 +192,11 @@ def orderbook(args):
                 logging.info("STOP " + symbol + " tf " + timeframe + ": not enough margin")
                 exit("STOP " + symbol + " tf " + timeframe + ": not enough margin")
 
+            volume = getCoinVolume(symbol)
+            normalized_volume = ((volume - 45000)/(900000000-45000))*100
+            if normalized_volume > 100:
+                normalized_volume = 100
+
             client = Client(api_key=api_key, api_secret=api_secret)
             balance = client.get_asset_balance(asset=quote_asset)
             qty_asset = float(balance['free'])
@@ -178,10 +210,12 @@ def orderbook(args):
 
             # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
             max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
+            max_buy_cap = qty_asset * float(config['max_cap']) / 100
             #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
             buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((close_price - open_price) / price) * 10)
-            if buy_qty > max_buy_qty:
-                buy_qty = max_buy_qty
+            buy_qty = buy_qty * normalized_volume
+            if buy_qty > max_buy_cap:
+                buy_qty = max_buy_cap
 
             logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
             print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
