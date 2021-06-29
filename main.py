@@ -480,7 +480,7 @@ def main():
                             minQty = filt['minNotional']
                     if minQty2 > minQty:
                         minQty = minQty2
-                    if symbol['quoteAsset'] in assets and symbol['symbol'] not in ("GTCBTC", "AIONETH", "PERLUSDT", "CELOUSDT", "BAKEUSDT", "BAKEBUSD", "RLCBUSD", "BIFIBUSD", "SANDBUSD", "BELBUSD", "IOTABUSD", "AIONUSDT", "DGBUSDT", "SLPBUSD") and 'SPOT' in symbol['permissions']:
+                    if symbol['quoteAsset'] in assets and 'SPOT' in symbol['permissions']:
                         arg = {"symbol": symbol['symbol'], "timeframe": timeframe, "quote_asset": symbol['quoteAsset'], "quote_precision": precision, "minQty": minQty}
                         candidate_markets.append(arg)
             forceStart = False
