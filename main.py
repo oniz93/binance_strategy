@@ -197,7 +197,6 @@ def orderbook(args):
             if normalized_volume > 100:
                 normalized_volume = 100
 
-            client = Client(api_key=api_key, api_secret=api_secret)
             balance = client.get_asset_balance(asset=quote_asset)
             qty_asset = float(balance['free'])
             logging.info("Quote asset: " + quote_asset + " Balance: " + str(qty_asset))
@@ -235,6 +234,8 @@ def orderbook(args):
             logging.info(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
             print(str(start_datetime) + " - BUY " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
         else:
+
+            client = Client(api_key=api_key, api_secret=api_secret)
             logging.info(str(start_datetime) + " - RESTART " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
             print(str(start_datetime) + " - RESTART " + symbol + " - QTY: " + str(exec_qty) + " Exec QTY: " + str(exec_qty))
             positionDB.updatePid(str(pid), str(current_pid))
