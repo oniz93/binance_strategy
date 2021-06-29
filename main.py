@@ -215,7 +215,8 @@ def orderbook(args):
             buy_qty = min_qty + ((buy_qty-min_qty) * normalized_volume)
             if buy_qty > max_buy_cap:
                 buy_qty = max_buy_cap
-
+            if min_qty > buy_qty:
+                buy_qty = min_qty*1.05
 
             logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
             print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
@@ -458,7 +459,7 @@ def main():
             headers={"Content-Type": "application/json"}
         )
         coins = json.loads(response.content)
-        forceStart = True
+        forceStart = config['force_start']
         while True:
             c = 0
             curr_time = int(time.time())
