@@ -227,7 +227,7 @@ def orderbook(args):
                 positions.append(timeframe + "_" + symbol)
             else:
                 #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
-                exec_qty = buy_qty
+                exec_qty = buy_qty/current_price
                 positions.append(timeframe + "_" + symbol)
             args['exec_qty'] = exec_qty
             positionDB.open(order_detail=args, symbol=symbol, timeframe=timeframe, pid=current_pid)
