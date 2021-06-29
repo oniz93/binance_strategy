@@ -213,7 +213,7 @@ def orderbook(args):
             max_buy_cap = qty_asset * float(config['max_cap']) / 100
             #buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio']) / 100) / ((close_price - open_price) * 100) / price * 100) * 10
             buy_qty = min_qty + (((qty_asset - min_qty) * float(config['perc_rischio'])/100) * ((close_price - open_price) / price) * 10)
-            buy_qty = min_qty + (buy_qty-min_qty * normalized_volume)
+            buy_qty = min_qty + ((buy_qty-min_qty) * normalized_volume)
             if buy_qty > max_buy_cap:
                 buy_qty = max_buy_cap
 
