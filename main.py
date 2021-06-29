@@ -197,6 +197,7 @@ def orderbook(args):
             if normalized_volume > 100:
                 normalized_volume = 100
 
+            client = Client(api_key=api_key, api_secret=api_secret)
             balance = client.get_asset_balance(asset=quote_asset)
             qty_asset = float(balance['free'])
             logging.info("Quote asset: " + quote_asset + " Balance: " + str(qty_asset))
