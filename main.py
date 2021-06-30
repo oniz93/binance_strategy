@@ -202,6 +202,7 @@ def orderbook(args):
             if normalized_volume > max_normalized_volume:
                 normalized_volume = max_normalized_volume
 
+            client = Client(api_key=api_key, api_secret=api_secret)
             balance = client.get_asset_balance(asset=quote_asset)
             qty_asset = float(balance['free'])
             logging.info("Quote asset: " + quote_asset + " Balance: " + str(qty_asset))
@@ -234,7 +235,7 @@ def orderbook(args):
             else:
                 price = current_price
                 #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
-                exec_qty = buy_qty
+                exec_qty = buy_qty/current_price
                 positions.append(timeframe + "_" + symbol)
             args['price'] = price
             args['exec_qty'] = exec_qty
