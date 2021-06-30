@@ -146,6 +146,10 @@ def orderbook(args):
         api_key = config['binance_key']
         api_secret = config['binance_secret']
         symbol = args['symbol']
+        if 'start_datetime' in args:
+            start_datetime = args['start_datetime']
+        else:
+            args['start_datetime'] = start_datetime
         c_t = args['c_t']
         c_l = args['c_l']
         c_ct = args['c_ct']
@@ -193,9 +197,10 @@ def orderbook(args):
                 exit("STOP " + symbol + " tf " + timeframe + ": not enough margin")
 
             volume = getCoinVolume(symbol)
-            normalized_volume = ((volume - 45000)/(900000000-45000))*100
-            if normalized_volume > 100:
-                normalized_volume = 100
+            max_normalized_volume = 5
+            normalized_volume = ((volume - 45000)/(900000000-45000))*max_normalized_volume
+            if normalized_volume > max_normalized_volume:
+                normalized_volume = max_normalized_volume
 
             balance = client.get_asset_balance(asset=quote_asset)
             qty_asset = float(balance['free'])
@@ -207,6 +212,7 @@ def orderbook(args):
                 logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
                 exit("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
 
+            min_qty = min_qty*1.05
             # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
             max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
             max_buy_cap = qty_asset * float(config['max_cap']) / 100
@@ -216,7 +222,7 @@ def orderbook(args):
             if buy_qty > max_buy_cap:
                 buy_qty = max_buy_cap
             if min_qty > buy_qty:
-                buy_qty = min_qty*1.05
+                buy_qty = min_qty
 
             logging.info("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
             print("Buying " + symbol + " avail " + str(qty_asset) + " qty buy " + str(buy_qty) + " value " + str(buy_qty * price))
@@ -226,9 +232,11 @@ def orderbook(args):
                 price = float(order['fills'][0]['price'])
                 positions.append(timeframe + "_" + symbol)
             else:
+                price = current_price
                 #order = client.create_test_order( symbol=symbol, side='BUY', type='MARKET', quoteOrderQty=round(buy_qty, quote_precision))
                 exec_qty = buy_qty
                 positions.append(timeframe + "_" + symbol)
+            args['price'] = price
             args['exec_qty'] = exec_qty
             positionDB.open(order_detail=args, symbol=symbol, timeframe=timeframe, pid=current_pid)
 
