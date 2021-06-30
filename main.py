@@ -405,7 +405,7 @@ def check_coin(args):
         for index, check_tick in check_ticks.iterrows():
             if (check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']):
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
-                stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low']) * 1.2
+                stop_loss = check_tick['low'] - (check_tick['high'] - check_tick['low'])
                 price = getCurrentCoinPrice(symbol)
                 current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
                 perc_price = (check_tick['close'] - check_tick['open']) * 100 / price
