@@ -77,6 +77,8 @@ workers = list()
 positions = list()
 take_profit = 0
 stop_loss = 0
+curr_tick = None
+args = None
 positionDB = Position()
 positionDB.create_table()
 
@@ -265,6 +267,8 @@ def orderbook(args):
         global take_profit
         global stop_loss
         global positions
+        global args
+        global curr_tick
         try:
             ws_error = trade['e']
         except Exception as e:
@@ -357,6 +361,8 @@ def orderbook(args):
     twm.start_trade_socket(callback=check_price, symbol=symbol)
 
 def check_coin(args):
+    global stop_loss
+    global curr_tick
     try:
         symbol = args['symbol']
         timeframe = args['timeframe']
@@ -449,8 +455,8 @@ def check_coin(args):
                     # callback ws
                     def check_price(trade):
                         global take_profit
-                        global stop_loss
                         global positions
+                        global stop_loss
                         global curr_tick
                         global args
                         try:
