@@ -164,7 +164,7 @@ def orderbook(args):
         low_price = float(args['low'])
         quote_asset = args['quote_asset']
         quote_precision = args['quote_precision']
-        min_qty = float(args['min_qty'])
+        min_qty = float(args['min_qty'])*2
         pid = False
         exec_qty = False
         if 'exec_qty' in args:
@@ -213,7 +213,7 @@ def orderbook(args):
                 logging.info("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
                 exit("Buying " + symbol + " tf " + timeframe + ": not enough wallet")
 
-            min_qty = min_qty*1.05
+            min_qty = min_qty
             # calcolo della quantità di acquisto, al massimo acquista un totale di balance X perc rischio
             max_buy_qty = min_qty + ((qty_asset - min_qty) * float(config['perc_rischio'])/100)
             max_buy_cap = qty_asset * float(config['max_cap']) / 100
@@ -410,6 +410,61 @@ def check_coin(args):
             if tick['EMA_9_OHLC4'] < tick['EMA_40_low']:
                 c_ct = c_ct + 1
 
+            # twm process variable
+            twm = ThreadedWebsocketManager()
+            time_start_ws = int(time.time())
+            ws_error = False
+
+            # callback ws
+            def check_price(trade):
+                global take_profit
+                global stop_loss
+                global positions
+                global curr_tick
+                global args
+                try:
+                    ws_error = trade['e']
+                except Exception as e:
+                    ws_error = 'error'
+
+                if time_start_ws % (60 * 60 * 2) == 0 or ws_error == 'error' or trade['e'] == 'error':
+                    twm_start = False
+                    tentative = 0
+                    while not twm_start or tentative < 20:
+                        try:
+                            twm.stop()
+                            twm.start()
+                            twm.start_trade_socket(callback=check_price, symbol=symbol)
+                            twm_start = True
+                            logging.info("START WS " + timeframe + " - " + symbol)
+                        except Exception as e:
+                            time.sleep(2)
+                            tentative += 1
+                            twm_start = False
+                            logging.critical(e, exc_info=True)
+                    if tentative >= 20:
+                        # chiude l'ordine
+                        try:
+                            positions.remove(timeframe + "_" + symbol)
+                        except:
+                            pass
+                        positionDB.closePid(current_pid)
+                        exit("ERROR WS AUTO BUY")
+
+                else:
+                    try:
+                        act_price = float(trade['p'])
+                        twm.stop()
+                        if act_price > curr_tick['close']:
+                            print("Apro posizione " + symbol + " TF " + timeframe)
+                            orderbook(args)
+                        exit()
+
+
+                    except Exception as e:
+                        logging.critical(symbol)
+                        logging.critical(e, exc_info=True)
+
         for index, check_tick in check_ticks.iterrows():
             if (check_tick['open'] < check_tick['close'] and check_tick['low'] > check_tick['EMA_4_OHLC4'] and check_tick['low'] > check_tick['EMA_9_OHLC4'] and check_tick['low'] > check_tick['EMA_40_OHLC4']):
                 take_profit = (check_tick['close'] - check_tick['open'] + check_tick['close'])
@@ -417,7 +472,7 @@ def check_coin(args):
                 price = getCurrentCoinPrice(symbol)
                 current_hour = (datetime.utcfromtimestamp(time.time()).strftime('%H'))
                 perc_price = (check_tick['close'] - check_tick['open']) * 100 / price
-
+                curr_tick = check_tick
                 if (price < take_profit and price > stop_loss and perc_price >= 0.9 and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23'):
                     multiplier = 1
                     args = {
@@ -438,9 +493,9 @@ def check_coin(args):
                         "quote_precision": quote_precision,
                         "min_qty": min_qty
                     }
-                    print("Apro posizione " + symbol + " TF " + timeframe)
                     # richiama orderbok per gestire la posizione
-                    orderbook(args)
+                    twm.start()
+                    twm.start_trade_socket(callback=check_price, symbol=symbol)
 
     except Exception as e:
         logging.critical(e, exc_info=True)
