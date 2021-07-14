@@ -78,7 +78,7 @@ positions = list()
 take_profit = 0
 stop_loss = 0
 curr_tick = None
-args = None
+args_order = None
 positionDB = Position()
 positionDB.create_table()
 
@@ -363,6 +363,7 @@ def orderbook(args):
 def check_coin(args):
     global stop_loss
     global curr_tick
+    global args_order
     try:
         symbol = args['symbol']
         timeframe = args['timeframe']
@@ -433,7 +434,8 @@ def check_coin(args):
                 curr_tick = check_tick
                 if (price < take_profit and price > stop_loss and perc_price >= 0.9 and ((c_t == 8 and c_l == 2 and c_ct == 0) or (c_t == 5 and c_l == 4 and c_ct == 1) or (c_t == 5 and c_l == 5 and c_ct == 0) or (c_t == 3 and c_l == 7 and c_ct == 0) or (c_t == 0 and c_l == 3 and c_ct == 7)) and current_hour != '2' and current_hour != '23'):
                     multiplier = 1
-                    args = {
+
+                    args_order = {
                         "symbol": symbol,
                         "c_t": c_t,
                         "c_l": c_l,
@@ -458,7 +460,7 @@ def check_coin(args):
                         global positions
                         global stop_loss
                         global curr_tick
-                        global args
+                        global args_order
                         try:
                             ws_error = trade['e']
                         except Exception as e:
@@ -494,8 +496,8 @@ def check_coin(args):
                                 twm.stop()
                                 if act_price > curr_tick['close']:
                                     print("Apro posizione " + symbol + " TF " + timeframe)
-                                    # richiama orderbok per gestire la posizione
-                                    orderbook(args)
+                                    # richiama orderbook per gestire la posizione
+                                    orderbook(args_order)
                                 exit()
 
 
