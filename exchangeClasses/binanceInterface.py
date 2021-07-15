@@ -3,12 +3,14 @@ from binance import Client
 from binance import ThreadedWebsocketManager
 import ujson as json
 import requests
+import time
 class BinanceInterface(ExchangeInterface):
     api_key = ""
     api_secret = ""
     api_limit_requests_per_min = 0
     client = None
     api_endpoint = "https://api.binance.com/"
+    twmObject = None
 
     def __init__(self, api_key, api_secret, api_limit_requests_per_min):
         self.api_key = api_key
@@ -16,7 +18,7 @@ class BinanceInterface(ExchangeInterface):
         self.api_limit_requests_per_min
 
     def initializeClient(self):
-        self.client = Client(api_key=api_key, api_secret=api_secret)
+        self.client = Client(api_key=self.api_key, api_secret=self.api_secret)
 
     def getCoinList(self):
         pass
